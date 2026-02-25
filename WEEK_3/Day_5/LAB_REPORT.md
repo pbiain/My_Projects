@@ -74,7 +74,53 @@ output to a file. Fixed by removing emojis from all print statements.
 - **Windows terminal encoding** — why special characters break output redirection
   and how to configure UTF-8 encoding properly in PowerShell
 
+## Questions I asked so I could understand things better
 ---
+## Note on Langraph 
+
+- Where it appears:
+
+1. create_react_agent comes from LangGraph
+pythonfrom langgraph.prebuilt import create_react_agent
+Even though it feels like a LangChain function, it's actually a LangGraph prebuilt component. That's why I got the deprecation warning saying it moved.
+2. The agent itself runs on LangGraph
+When I call agent.ainvoke(), under the hood LangGraph is managing the agent's execution as a graph with nodes and edges:
+
+This is the graph
+
+[START]
+
+   ↓
+
+[LLM thinks] → decides to call a tool
+
+   ↓
+
+[Tool executes] → returns result
+
+   ↓
+
+[LLM thinks again] → has enough info?
+
+   ↓ No              ↓ Yes
+
+[call another tool]  [give final answer]
+
+↓
+
+[END]
+
+3. The ReAct pattern is a LangGraph graph
+The ReAct loop (Reason → Act → Observe → Repeat) is literally implemented as a state machine graph in LangGraph.
+
+So in simple terms:
+
+LangChain provides the tools, LLM wrapper, and abstractions
+LangGraph provides the agent execution engine that orchestrates the loop
+MCP provides the actual capabilities (read files, list directories, etc.)
+
+They work together — LangGraph is the engine, LangChain is the framework, MCP is the toolbox.
+
 
 ## Note on Cursor vs Python
 

@@ -1,0 +1,31 @@
+
+FINAL LAB REPORT - NormalObjects LangGraph
+===========================================
+Start time: 16:05
+End time: 18:02
+Total time: 0:00:23
+
+TIME PER STEP:
+- Step 1 (Setup & State):        ~20 min
+- Step 2 (Workflow Nodes):       ~25 min
+- Step 3 (Build Graph):          ~10 min
+- Step 4 (Test Workflow):        ~20 min
+- Step 5 (Visualize):            ~10 min
+- Step 6 (Comparison):           ~10 min
+
+CHALLENGES:
+- Wrong folder in terminal (ran file from wrong directory)
+- .env file not found initially
+- Emoji encoding error when writing HTML
+- Understanding where output goes in .py files
+
+THINGS TO IMPROVE:
+- Navigate to correct folder before starting
+- Use .ipynb during development to save tokens
+- Add logging from the beginning instead of print()
+
+THINGS TO LEARN MORE ABOUT:
+- LangGraph conditional edges (routing based on state)
+- LangGraph parallel nodes
+- How to persist state to a database
+- Converting .ipynb to .py for production

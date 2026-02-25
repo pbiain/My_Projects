@@ -10,7 +10,7 @@ run_id,prompt,response,is_success,failure_pattern
 2,I ordered item #12345 on March 15th. The delivery was fast but the packaging was damaged.,"```json
 {
   ""order_id"": ""12345"",
-  ""order_date"": ""March 15th"",
+  ""order_date"": ""2023-03-15"",
   ""delivery_speed"": ""fast"",
   ""packaging_condition"": ""damaged""
 }
@@ -18,7 +18,7 @@ run_id,prompt,response,is_success,failure_pattern
 3,I ordered item #12345 on March 15th. The delivery was fast but the packaging was damaged.,"```json
 {
   ""order_id"": ""12345"",
-  ""order_date"": ""March 15th"",
+  ""order_date"": ""2023-03-15"",
   ""delivery_speed"": ""fast"",
   ""packaging_condition"": ""damaged""
 }
@@ -42,7 +42,7 @@ run_id,prompt,response,is_success,failure_pattern
 6,I ordered item #12345 on March 15th. The delivery was fast but the packaging was damaged.,"```json
 {
   ""order_id"": ""12345"",
-  ""order_date"": ""2023-03-15"",
+  ""order_date"": ""March 15th"",
   ""delivery_speed"": ""fast"",
   ""packaging_condition"": ""damaged""
 }
@@ -50,7 +50,7 @@ run_id,prompt,response,is_success,failure_pattern
 7,I ordered item #12345 on March 15th. The delivery was fast but the packaging was damaged.,"```json
 {
   ""order_id"": ""12345"",
-  ""order_date"": ""March 15th"",
+  ""order_date"": ""2023-03-15"",
   ""delivery_speed"": ""fast"",
   ""packaging_condition"": ""damaged""
 }
@@ -74,7 +74,7 @@ run_id,prompt,response,is_success,failure_pattern
 10,I ordered item #12345 on March 15th. The delivery was fast but the packaging was damaged.,"```json
 {
   ""order_id"": ""12345"",
-  ""order_date"": ""2023-03-15"",
+  ""order_date"": ""March 15th"",
   ""delivery_speed"": ""fast"",
   ""packaging_condition"": ""damaged""
 }
@@ -82,7 +82,7 @@ run_id,prompt,response,is_success,failure_pattern
 11,I ordered item #12345 on March 15th. The delivery was fast but the packaging was damaged.,"```json
 {
   ""order_id"": ""12345"",
-  ""order_date"": ""2023-03-15"",
+  ""order_date"": ""March 15"",
   ""delivery_speed"": ""fast"",
   ""packaging_condition"": ""damaged""
 }
@@ -90,7 +90,7 @@ run_id,prompt,response,is_success,failure_pattern
 12,I ordered item #12345 on March 15th. The delivery was fast but the packaging was damaged.,"```json
 {
   ""order_id"": ""12345"",
-  ""order_date"": ""March 15"",
+  ""order_date"": ""2023-03-15"",
   ""delivery_speed"": ""fast"",
   ""packaging_condition"": ""damaged""
 }
@@ -106,7 +106,7 @@ run_id,prompt,response,is_success,failure_pattern
 14,I ordered item #12345 on March 15th. The delivery was fast but the packaging was damaged.,"```json
 {
   ""order_id"": ""12345"",
-  ""order_date"": ""March 15th"",
+  ""order_date"": ""2023-03-15"",
   ""delivery_speed"": ""fast"",
   ""packaging_condition"": ""damaged""
 }
@@ -114,7 +114,7 @@ run_id,prompt,response,is_success,failure_pattern
 15,I ordered item #12345 on March 15th. The delivery was fast but the packaging was damaged.,"```json
 {
   ""order_id"": ""12345"",
-  ""order_date"": ""March 15th"",
+  ""order_date"": ""2023-03-15"",
   ""delivery_speed"": ""fast"",
   ""packaging_condition"": ""damaged""
 }
