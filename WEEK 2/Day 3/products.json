@@ -1,13 +1,23 @@
 {
   "products": [
     {
-      "id": "p1",
+      "id": 1,
       "name": "Water Bottle",
       "category": "Outdoors",
       "price": 12.99,
       "features": [
         "BPA-free",
         "Insulated"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Desk Lamp",
+      "category": "Home Office",
+      "price": 34.99,
+      "features": [
+        "LED",
+        "USB charging port"
       ]
     }
   ]

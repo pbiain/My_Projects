@@ -1,0 +1,20 @@
+{
+  "products": [
+    {
+      "id": 3,
+      "name": "A",
+      "category": "Test",
+      "price": -5.0,
+      "features": []
+    },
+    {
+      "id": 4,
+      "name": "Valid Product",
+      "category": "Test",
+      "price": 19.99,
+      "features": [
+        "Feature 1"
+      ]
+    }
+  ]
+}
