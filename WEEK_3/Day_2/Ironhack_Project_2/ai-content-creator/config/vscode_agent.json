@@ -1,0 +1,5 @@
+{
+    "agent": "ai-content-creator",
+    "version": "1.0.0",
+    "defaultPipeline": "document-monitor-brief-publish-iterate"
+}
