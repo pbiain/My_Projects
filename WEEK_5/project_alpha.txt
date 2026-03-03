@@ -1,0 +1,26 @@
+Project Alpha - Status Report
+==============================
+
+Project: Alpha
+Status: In Progress
+Last Updated: February 2026
+
+Summary:
+Alpha is a machine learning pipeline designed to process customer feedback 
+and classify sentiment in real time. The system uses a fine-tuned transformer 
+model deployed on AWS Lambda.
+
+Current Progress:
+- Data ingestion pipeline: COMPLETE
+- Model training: COMPLETE
+- API endpoint: IN PROGRESS (70% done)
+- Frontend dashboard: NOT STARTED
+
+Blockers:
+- AWS IAM permissions need to be reviewed by security team
+- Frontend developer starts next Monday
+
+Next Steps:
+1. Finish API endpoint by end of week
+2. Security review on Friday
+3. Begin frontend development next week
