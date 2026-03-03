@@ -7,7 +7,7 @@ def assemble_output(state):
         "original_message": state["user_message"],
         "actions_taken":    state["actions_taken"],
         "send_telegram":    score == "HOT",
-        "send_email":       score in ("HOT", "WARM"),
+        "send_email":       score == "WARM",
         "log_to_sheets":    True,
     }
     return state
