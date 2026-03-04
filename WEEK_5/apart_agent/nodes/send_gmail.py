@@ -12,6 +12,10 @@ def send_gmail(state):
     if state["lead_score"] != "WARM":
         return state
 
+    if not GMAIL_SENDER or not GMAIL_APP_PASSWORD or not GMAIL_RECIPIENT:
+        print("[send_gmail] Skipped — credentials not configured")
+        return state
+
     html = f"""
     <html><body style="font-family:Arial,sans-serif;color:#333;">
       <div style="background:#f0a500;padding:20px;border-radius:8px 8px 0 0;">
