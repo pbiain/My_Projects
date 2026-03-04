@@ -128,8 +128,8 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "inbound",
-                    "rightValue": "={{$json.body.type}}",
+                    "leftValue": "={{$json.body.type}}",
+                    "rightValue": "inbound",
                     "operator": {
                       "type": "string",
                       "operation": "equals"
@@ -151,8 +151,8 @@
                 "conditions": [
                   {
                     "id": "ddc086d7-6ad2-4f51-87a2-efa243b431de",
-                    "leftValue": "outbound",
-                    "rightValue": "={{$json.body.type}}",
+                    "leftValue": "={{$json.body.type}}",
+                    "rightValue": "outbound",
                     "operator": {
                       "type": "string",
                       "operation": "equals",
