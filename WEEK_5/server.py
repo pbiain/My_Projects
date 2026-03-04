@@ -1,13 +1,47 @@
 import os
+import json
 import threading
 import requests as http
 from flask import Flask, request, jsonify, send_from_directory
 from dotenv import load_dotenv
 from langchain_community.tools import DuckDuckGoSearchRun
+from openai import OpenAI as _OpenAI
 
 _ddg = DuckDuckGoSearchRun()
 
 load_dotenv()
+
+_oai = _OpenAI()  # uses OPENAI_API_KEY from env
+
+
+def _parse_ddg_contacts(raw: str) -> list:
+    """Use GPT-4o-mini to extract structured contacts from DuckDuckGo raw text."""
+    try:
+        resp = _oai.chat.completions.create(
+            model="gpt-4o-mini",
+            temperature=0,
+            max_tokens=800,
+            messages=[{
+                "role": "user",
+                "content": (
+                    "Extract real estate company leads from this web search result.\n"
+                    "Return ONLY a JSON array. Each object may have these fields (omit fields not found):\n"
+                    "  company (string), domain (string), email (string), name (string)\n"
+                    "Rules:\n"
+                    "- domain must be clean: e.g. remax.com.ar — no http://, no paths\n"
+                    "- Include ONLY entries that have at least one of: domain, email, or company\n"
+                    "- Skip generic articles, FAQs, blog posts, or entries with no contact info\n"
+                    "- If same company appears multiple times, merge into one entry\n"
+                    "- Return [] if nothing useful found\n\n"
+                    f"Search results:\n{raw}\n\n"
+                    "Return valid JSON array only, no explanation."
+                ),
+            }],
+        )
+        parsed = json.loads(resp.choices[0].message.content)
+        return parsed if isinstance(parsed, list) else []
+    except Exception:
+        return []
 
 from apart_agent.graph import build_graph
 from apart_agent.notify import notify_n8n
@@ -74,32 +108,41 @@ def log_prospect():
 
 @app.route("/run-outbound", methods=["POST"])
 def run_outbound():
-    """DuckDuckGo market search — triggered by outbound UI or n8n schedule."""
+    """DuckDuckGo market search — parses results into structured contacts."""
     data = request.json or {}
     query = data.get("query", "").strip()
     if not query:
         return jsonify({"error": "query required"}), 400
 
-    # Auto-enhance with location context if query has no Argentine location terms
-    location_terms = ["san pedro", "argentina", "buenos aires", "ar"]
+    # Auto-enhance with location context
+    location_terms = ["san pedro", "argentina", "buenos aires"]
     if not any(t in query.lower() for t in location_terms):
         enhanced_query = f"{query} san pedro buenos aires argentina"
     else:
         enhanced_query = query
 
     try:
-        results = _ddg.run(enhanced_query)
+        raw = _ddg.run(enhanced_query)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    # Log search to n8n Outbound Prospects sheet
-    threading.Thread(target=notify_n8n, args=({
-        "type": "outbound", "company": "—", "domain": "—",
-        "name": "Market Search", "position": enhanced_query,
-        "email": "—", "potential": "SEARCH",
-    },), daemon=True).start()
+    # Parse raw text into structured contacts via GPT
+    contacts = _parse_ddg_contacts(raw)
 
-    return jsonify({"results": results, "query_used": enhanced_query})
+    # Log ONLY contacts with actionable data (domain, email, or company)
+    for c in contacts:
+        if any(c.get(f) for f in ["domain", "email", "company"]):
+            threading.Thread(target=notify_n8n, args=({
+                "type":     "outbound",
+                "company":  c.get("company", "—"),
+                "domain":   c.get("domain", "—"),
+                "name":     c.get("name", "—"),
+                "position": "—",
+                "email":    c.get("email", "—"),
+                "potential": "MEDIUM",
+            },), daemon=True).start()
+
+    return jsonify({"contacts": contacts, "query_used": enhanced_query})
 
 
 @app.route("/find-emails", methods=["POST"])

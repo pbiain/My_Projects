@@ -190,21 +190,7 @@
     }
     .empty-icon { font-size: 28px; margin-bottom: 8px; }
 
-    /* DuckDuckGo results box */
-    .results-box {
-      display: none;
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 16px;
-      font-size: 13px;
-      line-height: 1.75;
-      max-height: 440px;
-      overflow-y: auto;
-      color: #334155;
-    }
-    .results-box.show { display: block; }
-
+    /* Query tag */
     .query-tag {
       display: none;
       font-size: 11px;
@@ -213,21 +199,100 @@
       border: 1px solid #e2e8f0;
       border-radius: 8px;
       padding: 5px 10px;
-      margin-bottom: 6px;
     }
     .query-tag.show { display: block; }
     .query-tag strong { color: #1a1a2e; }
 
-    .result-paragraph {
-      padding: 10px 12px;
-      border-left: 3px solid #e2e8f0;
-      margin-bottom: 10px;
-      background: white;
-      border-radius: 0 8px 8px 0;
-      font-size: 13px;
-      line-height: 1.7;
+    .results-count {
+      display: none;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
     }
-    .result-paragraph:last-child { margin-bottom: 0; }
+    .results-count.show { display: block; }
+
+    /* Contact cards */
+    .contacts-grid {
+      display: none;
+      flex-direction: column;
+      gap: 9px;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    .contacts-grid.show { display: flex; }
+
+    .contact-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 13px 15px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+    .card-avatar {
+      width: 36px; height: 36px;
+      background: #1a1a2e;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+    .card-body { flex: 1; min-width: 0; }
+    .card-company {
+      font-weight: 700;
+      font-size: 13px;
+      color: #1a1a2e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 5px;
+    }
+    .card-chip {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      background: #f1f5f9;
+      color: #475569;
+      white-space: nowrap;
+      max-width: 190px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-chip.domain { color: #0369a1; background: #e0f2fe; border-color: #bae6fd; cursor: default; }
+    .card-chip.email  { color: #15803d; background: #dcfce7; border-color: #bbf7d0; }
+
+    .hunt-btn {
+      background: #1a1a2e;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .hunt-btn:hover { background: #2d2d5e; }
+
+    .no-results {
+      display: none;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 13px;
+      padding: 28px 0;
+      line-height: 1.6;
+    }
+    .no-results.show { display: block; }
 
     /* Hunter table */
     .org-label {
@@ -350,7 +415,7 @@
       <button class="btn" id="search-btn" onclick="runSearch()">Search</button>
     </div>
 
-    <div class="loading" id="search-load"><div class="spinner"></div> Searching the web...</div>
+    <div class="loading" id="search-load"><div class="spinner"></div> Searching and extracting contacts...</div>
     <div class="error-msg" id="search-err"></div>
 
     <div class="empty" id="search-empty">
@@ -359,7 +424,12 @@
     </div>
 
     <div class="query-tag" id="query-tag">Searched: <strong id="query-used"></strong></div>
-    <div class="results-box" id="search-results"></div>
+    <div class="results-count" id="results-count"></div>
+    <div class="contacts-grid" id="contacts-grid"></div>
+    <div class="no-results" id="no-results">
+      <div class="empty-icon" style="font-size:22px;margin-bottom:6px">🔍</div>
+      No companies found. Try a more specific query<br>or include a location (e.g. "san pedro").
+    </div>
   </div>
 
   <!-- RIGHT: Email Finder -->
@@ -426,6 +496,12 @@
     if (e.key === 'Enter') findEmails();
   });
 
+  function autoHunt(domain) {
+    document.getElementById('domain-in').value = domain;
+    findEmails();
+    document.getElementById('domain-in').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   async function runSearch() {
     const query = document.getElementById('search-q').value.trim();
     if (!query) return;
@@ -434,8 +510,10 @@
     btn.disabled = true;
     document.getElementById('search-load').classList.add('show');
     document.getElementById('search-empty').style.display = 'none';
-    document.getElementById('search-results').classList.remove('show');
+    document.getElementById('contacts-grid').classList.remove('show');
     document.getElementById('query-tag').classList.remove('show');
+    document.getElementById('results-count').classList.remove('show');
+    document.getElementById('no-results').classList.remove('show');
     document.getElementById('search-err').classList.remove('show');
 
     try {
@@ -449,25 +527,44 @@
         document.getElementById('search-err').textContent = data.error;
         document.getElementById('search-err').classList.add('show');
       } else {
-        // Show the actual query used (may have been enhanced with location)
+        // Show actual query used when auto-enhanced
         if (data.query_used && data.query_used !== query) {
           document.getElementById('query-used').textContent = data.query_used;
           document.getElementById('query-tag').classList.add('show');
         }
-        // Format raw text as readable paragraphs
-        const box = document.getElementById('search-results');
-        const paragraphs = data.results
-          .split(/\n{2,}|\n(?=[A-Z•\-])/)
-          .map(s => s.trim())
-          .filter(s => s.length > 20);
-        if (paragraphs.length > 1) {
-          box.innerHTML = paragraphs
-            .map(p => `<div class="result-paragraph">${p.replace(/\n/g, '<br>')}</div>`)
-            .join('');
+
+        const contacts = data.contacts || [];
+        if (contacts.length === 0) {
+          document.getElementById('no-results').classList.add('show');
         } else {
-          box.innerHTML = `<div class="result-paragraph">${data.results.replace(/\n/g, '<br>')}</div>`;
+          document.getElementById('results-count').textContent =
+            `${contacts.length} company lead${contacts.length > 1 ? 's' : ''} found`;
+          document.getElementById('results-count').classList.add('show');
+
+          const grid = document.getElementById('contacts-grid');
+          grid.innerHTML = '';
+          for (const c of contacts) {
+            const hasDomain = !!c.domain;
+            const card = document.createElement('div');
+            card.className = 'contact-card';
+            card.innerHTML = `
+              <div class="card-avatar">${hasDomain ? '🏢' : '👤'}</div>
+              <div class="card-body">
+                <div class="card-company">${c.company || c.name || c.domain || 'Unknown'}</div>
+                <div class="card-meta">
+                  ${c.domain ? `<span class="card-chip domain">🌐 ${c.domain}</span>` : ''}
+                  ${c.email  ? `<span class="card-chip email">✉️ ${c.email}</span>` : ''}
+                  ${c.name && c.name !== c.company ? `<span class="card-chip">👤 ${c.name}</span>` : ''}
+                </div>
+              </div>
+              ${hasDomain
+                ? `<button class="hunt-btn" onclick="autoHunt('${c.domain}')">Find Contacts →</button>`
+                : ''}
+            `;
+            grid.appendChild(card);
+          }
+          grid.classList.add('show');
         }
-        box.classList.add('show');
       }
     } catch {
       document.getElementById('search-err').textContent = 'Connection error. Please try again.';
