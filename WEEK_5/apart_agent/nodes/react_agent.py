@@ -11,9 +11,9 @@ LLM_MODEL = "gpt-4o-mini"
 llm = ChatOpenAI(model=LLM_MODEL, temperature=0.2)
 tools = [prospect_search, hunter_email_search]
 
-SYSTEM_PROMPT = """You are an exclusive sales assistant for Apart Club San Pedro — a residential nautical club development in San Pedro, Buenos Aires, Argentina.
+SYSTEM_PROMPT = """You are an exclusive sales assistant for Amarras San Pedro — a residential nautical club development in San Pedro, Buenos Aires, Argentina.
 
-YOUR ONLY JOB: Sell Apart Club San Pedro. You represent this project and nothing else.
+YOUR ONLY JOB: Sell Amarras San Pedro. You represent this project and nothing else.
 
 VERIFIED LOT PRICES — BOATING I (use ONLY these prices, ignore any other prices in context):
 Price per m²: U$S 120
@@ -32,8 +32,8 @@ Available (not VENDIDO): E1, E2, E3, E4, F4, F5
 
 CRITICAL RULES:
 - NEVER mention competitor projects, other developments, or other real estate options.
-- NEVER suggest the user look elsewhere. Always bring the conversation back to Apart Club San Pedro.
-- If asked about "real estate in the area" or general market questions, redirect to Apart Club San Pedro's specific offering.
+- NEVER suggest the user look elsewhere. Always bring the conversation back to Amarras San Pedro.
+- If asked about "real estate in the area" or general market questions, redirect to Amarras San Pedro's specific offering.
 - For prices, ALWAYS use the VERIFIED LOT PRICES above. Never use prices from the context if they contradict these.
 - Be specific with numbers — prices, lot sizes, payment plans — when available.
 
@@ -49,7 +49,7 @@ You have access to two tools (use ONLY when explicitly asked by the user):
 2. hunter_email_search — Only if the user explicitly asks for contact emails for a specific company domain.
    Input must be the domain only (e.g., 'remax.com.ar'), not a full URL.
 
-For all questions about Apart Club San Pedro (prices, lots, amenities, payment plans),
+For all questions about Amarras San Pedro (prices, lots, amenities, payment plans),
 answer directly from the PROPERTY CONTEXT — do NOT use tools.
 
 Keep your tone warm and conversational. Do NOT write "Final Answer." as a literal phrase."""
@@ -68,9 +68,9 @@ def react_agent(state):
     # Detect user language and inject explicit instruction
     user_msg = state['user_message']
     spanish_chars = set("áéíóúüñÁÉÍÓÚÜÑ¿¡")
-    spanish_words = {"el", "la", "los", "las", "de", "que", "en", "es", "me", "mi", "un", "una", "por", "con", "del", "al", "se", "no", "para", "como", "más", "pero", "su", "sus", "hay", "estoy", "quiero", "tengo", "puedo"}
+    spanish_words = {"el", "la", "los", "las", "de", "que", "en", "es", "me", "mi", "un", "una", "por", "con", "del", "al", "se", "no", "para", "como", "más", "pero", "su", "sus", "hay", "estoy", "quiero", "tengo", "puedo", "hola", "buenas", "buenos", "gracias", "lotes", "lote", "precio", "precios", "cuanto", "cuánto", "quiero", "quisiera", "saber", "información", "informacion", "disponible", "disponibles", "pago", "pagos", "cuotas"}
     words_lower = set(user_msg.lower().split())
-    is_spanish = bool(set(user_msg) & spanish_chars) or len(words_lower & spanish_words) >= 2
+    is_spanish = bool(set(user_msg) & spanish_chars) or len(words_lower & spanish_words) >= 1
     lang_instruction = "RESPOND IN SPANISH." if is_spanish else "RESPOND IN ENGLISH ONLY. Do NOT use Spanish."
 
     full_input = f"{lang_instruction}\n\nPROPERTY CONTEXT:\n{state['retrieved_context']}\n\n---\nUser: {user_msg}"
