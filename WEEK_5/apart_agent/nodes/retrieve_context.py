@@ -16,11 +16,23 @@ vectorstore = PineconeVectorStore(
 )
 
 def retrieve_context(state):
-    docs = vectorstore.similarity_search(state["user_message"], k=4)
+    user_msg = state["user_message"]
+
+    # For short/vague messages, prepend last assistant reply to give RAG context
+    words = user_msg.strip().split()
+    if len(words) <= 6 and state.get("chat_history"):
+        last_turn = state["chat_history"][-1]
+        rag_query = f"{last_turn['assistant']} {user_msg}"
+    else:
+        rag_query = user_msg
+
+    results = vectorstore.similarity_search_with_score(rag_query, k=4)
     parts = []
-    for i, doc in enumerate(docs):
+    for i, (doc, score) in enumerate(results):
+        if score < 0.35:          # cosine distance — lower = more similar
+            continue
         source = doc.metadata.get("source", "unknown")
         parts.append(f"[Chunk {i+1} - {source}]\n{doc.page_content}")
-    state["retrieved_context"] = "\n\n".join(parts)
+    state["retrieved_context"] = "\n\n".join(parts) if parts else ""
     state["actions_taken"].append("rag_retrieval")
     return state
