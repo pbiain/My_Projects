@@ -31,6 +31,7 @@ def run_agent():
         "actions_taken":     [],
         "chat_history":      chat_history,
         "final_output":      {},
+        "language":          data.get("language", ""),
     }
 
     result = graph.invoke(state)

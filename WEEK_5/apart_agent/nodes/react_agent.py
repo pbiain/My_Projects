@@ -65,13 +65,19 @@ def react_agent(state):
         messages.append(HumanMessage(content=turn["user"]))
         messages.append(AIMessage(content=turn["assistant"]))
 
-    # Detect user language and inject explicit instruction
+    # Determine language: use frontend flag if set, otherwise auto-detect
     user_msg = state['user_message']
-    spanish_chars = set("áéíóúüñÁÉÍÓÚÜÑ¿¡")
-    spanish_words = {"el", "la", "los", "las", "de", "que", "en", "es", "me", "mi", "un", "una", "por", "con", "del", "al", "se", "no", "para", "como", "más", "pero", "su", "sus", "hay", "estoy", "quiero", "tengo", "puedo", "hola", "buenas", "buenos", "gracias", "lotes", "lote", "precio", "precios", "cuanto", "cuánto", "quiero", "quisiera", "saber", "información", "informacion", "disponible", "disponibles", "pago", "pagos", "cuotas"}
-    words_lower = set(user_msg.lower().split())
-    is_spanish = bool(set(user_msg) & spanish_chars) or len(words_lower & spanish_words) >= 1
-    lang_instruction = "RESPOND IN SPANISH." if is_spanish else "RESPOND IN ENGLISH ONLY. Do NOT use Spanish."
+    forced_lang = state.get("language", "")
+    if forced_lang == "es":
+        is_spanish = True
+    elif forced_lang == "en":
+        is_spanish = False
+    else:
+        spanish_chars = set("áéíóúüñÁÉÍÓÚÜÑ¿¡")
+        spanish_words = {"el", "la", "los", "las", "de", "que", "en", "es", "me", "mi", "un", "una", "por", "con", "del", "al", "se", "no", "para", "como", "más", "pero", "su", "sus", "hay", "estoy", "quiero", "tengo", "puedo", "hola", "buenas", "buenos", "gracias", "lotes", "lote", "precio", "precios", "cuanto", "cuánto", "quisiera", "saber", "información", "informacion", "disponible", "disponibles", "pago", "pagos", "cuotas"}
+        words_lower = set(user_msg.lower().split())
+        is_spanish = bool(set(user_msg) & spanish_chars) or len(words_lower & spanish_words) >= 1
+    lang_instruction = "RESPOND IN SPANISH. Be concise — 2-3 sentences max." if is_spanish else "RESPOND IN ENGLISH ONLY. Be concise — 2-3 sentences max."
 
     full_input = f"{lang_instruction}\n\nPROPERTY CONTEXT:\n{state['retrieved_context']}\n\n---\nUser: {user_msg}"
     messages.append(HumanMessage(content=full_input))

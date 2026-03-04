@@ -48,6 +48,25 @@
     .header-text h1 { font-size: 18px; font-weight: 700; }
     .header-text p  { font-size: 12px; opacity: 0.7; margin-top: 2px; }
 
+    .lang-toggle {
+      display: flex;
+      gap: 6px;
+      margin-left: auto;
+      margin-right: 12px;
+    }
+    .lang-btn {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      border-radius: 14px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .lang-btn.active { background: rgba(255,255,255,0.35); font-weight: 700; }
+    .lang-btn:hover  { background: rgba(255,255,255,0.25); }
+
     .status-dot {
       width: 10px; height: 10px;
       background: #4ade80;
@@ -220,6 +239,10 @@
     <h1>Amarras San Pedro</h1>
     <p>AI Sales Agent · San Pedro, Buenos Aires</p>
   </div>
+  <div class="lang-toggle">
+    <button id="btn-es" class="lang-btn active" onclick="setLang('es')">🇦🇷 ES</button>
+    <button id="btn-en" class="lang-btn" onclick="setLang('en')">🇺🇸 EN</button>
+  </div>
   <div class="status-dot" title="Online"></div>
 </header>
 
@@ -244,9 +267,16 @@
   const sendBtn    = document.getElementById('send-btn');
 
   let chatHistory  = [];
-  let sessionData  = {};       // last agent response data
-  let inactivityTimer = null;  // 3-min auto-log timer
+  let sessionData  = {};
+  let inactivityTimer = null;
   const INACTIVITY_MS = 3 * 60 * 1000;
+  let selectedLang = 'es';
+
+  function setLang(lang) {
+    selectedLang = lang;
+    document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  }
 
   async function logSession(trigger) {
     if (!sessionData.score || sessionData.logged) return;
@@ -341,7 +371,7 @@
       const resp = await fetch('/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, chat_history: chatHistory }),
+        body: JSON.stringify({ message: text, chat_history: chatHistory, language: selectedLang }),
       });
 
       const data = await resp.json();
