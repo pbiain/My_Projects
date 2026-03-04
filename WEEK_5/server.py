@@ -79,19 +79,27 @@ def run_outbound():
     query = data.get("query", "").strip()
     if not query:
         return jsonify({"error": "query required"}), 400
+
+    # Auto-enhance with location context if query has no Argentine location terms
+    location_terms = ["san pedro", "argentina", "buenos aires", "ar"]
+    if not any(t in query.lower() for t in location_terms):
+        enhanced_query = f"{query} san pedro buenos aires argentina"
+    else:
+        enhanced_query = query
+
     try:
-        results = _ddg.run(query)
+        results = _ddg.run(enhanced_query)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
     # Log search to n8n Outbound Prospects sheet
     threading.Thread(target=notify_n8n, args=({
         "type": "outbound", "company": "—", "domain": "—",
-        "name": "Market Search", "position": query,
+        "name": "Market Search", "position": enhanced_query,
         "email": "—", "potential": "SEARCH",
     },), daemon=True).start()
 
-    return jsonify({"results": results})
+    return jsonify({"results": results, "query_used": enhanced_query})
 
 
 @app.route("/find-emails", methods=["POST"])

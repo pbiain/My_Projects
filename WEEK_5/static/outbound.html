@@ -201,10 +201,33 @@
       line-height: 1.75;
       max-height: 440px;
       overflow-y: auto;
-      white-space: pre-wrap;
       color: #334155;
     }
     .results-box.show { display: block; }
+
+    .query-tag {
+      display: none;
+      font-size: 11px;
+      color: #64748b;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 5px 10px;
+      margin-bottom: 6px;
+    }
+    .query-tag.show { display: block; }
+    .query-tag strong { color: #1a1a2e; }
+
+    .result-paragraph {
+      padding: 10px 12px;
+      border-left: 3px solid #e2e8f0;
+      margin-bottom: 10px;
+      background: white;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .result-paragraph:last-child { margin-bottom: 0; }
 
     /* Hunter table */
     .org-label {
@@ -335,6 +358,7 @@
       Use the chips above or enter your own query
     </div>
 
+    <div class="query-tag" id="query-tag">Searched: <strong id="query-used"></strong></div>
     <div class="results-box" id="search-results"></div>
   </div>
 
@@ -411,6 +435,7 @@
     document.getElementById('search-load').classList.add('show');
     document.getElementById('search-empty').style.display = 'none';
     document.getElementById('search-results').classList.remove('show');
+    document.getElementById('query-tag').classList.remove('show');
     document.getElementById('search-err').classList.remove('show');
 
     try {
@@ -424,8 +449,24 @@
         document.getElementById('search-err').textContent = data.error;
         document.getElementById('search-err').classList.add('show');
       } else {
+        // Show the actual query used (may have been enhanced with location)
+        if (data.query_used && data.query_used !== query) {
+          document.getElementById('query-used').textContent = data.query_used;
+          document.getElementById('query-tag').classList.add('show');
+        }
+        // Format raw text as readable paragraphs
         const box = document.getElementById('search-results');
-        box.textContent = data.results;
+        const paragraphs = data.results
+          .split(/\n{2,}|\n(?=[A-Z•\-])/)
+          .map(s => s.trim())
+          .filter(s => s.length > 20);
+        if (paragraphs.length > 1) {
+          box.innerHTML = paragraphs
+            .map(p => `<div class="result-paragraph">${p.replace(/\n/g, '<br>')}</div>`)
+            .join('');
+        } else {
+          box.innerHTML = `<div class="result-paragraph">${data.results.replace(/\n/g, '<br>')}</div>`;
+        }
         box.classList.add('show');
       }
     } catch {
