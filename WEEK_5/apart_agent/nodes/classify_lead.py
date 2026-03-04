@@ -8,13 +8,17 @@ CLASSIFICATION_SYSTEM = """
 You are a lead scoring assistant for a real estate development in Argentina.
 Given the lead's message, classify them as:
 
-HOT  — Mentions a specific budget, asks about a specific lot number,
-        asks about payment plans with intent to buy, mentions investment ROI,
-        or signals they are ready to proceed.
-WARM — General interest, asking about prices or availability,
-        asking about building regulations or construction rules,
-        curious but no urgency or budget mentioned.
-COLD — Just browsing, very vague, hypothetical, or no real intent signals.
+HOT  — Any of these signals:
+        • Expresses buying intent: "I want to buy", "quiero comprar", "me gustaría comprar", "I'll take it", "I want one"
+        • Expresses interest directly: "I'm interested", "estoy interesado", "me interesa"
+        • Wants to visit or see the property: "can I see it", "puedo verlo", "me gustaría visitar", "I like it"
+        • Mentions a specific budget or asks about financing/payment plans
+        • Asks about a specific lot number
+        • Mentions investment ROI or asks about returns
+WARM — Asks about general prices, availability, lot sizes, or building regulations.
+        General curiosity with no clear commitment or purchase-related signal.
+COLD — Just browsing, very vague, hypothetical ("what if", "just curious"),
+        or shows no real intent signals whatsoever.
 
 Respond ONLY with valid JSON, no extra text:
 {"score": "HOT", "reason": "one sentence explanation"}

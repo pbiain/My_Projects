@@ -1,0 +1,284 @@
+# 🏡 Apart Club San Pedro — Real Estate Sales Agent
+
+> Autonomous AI agent that qualifies inbound real estate leads, answers buyer questions from property documents, and routes notifications — without human intervention.
+
+**Author:** Pedro Biain | **IronHack AI Bootcamp** | **Week 5 — Module 3**  
+**Stack:** Python 3.12 · LangGraph · LangChain · Pinecone · Flask · ngrok · n8n · OpenAI · Tavily · Telegram · Gmail · Google Sheets
+
+---
+
+## 📌 Project Overview
+
+Apart Club San Pedro is a nautical residential club development in San Pedro, Buenos Aires, Argentina. **Stage 2 (Club Náutico)** offers 46 waterfront lots ranging from 544m² to 850m², with direct river access, private docks, and navigable canals.
+
+This agent automates the sales funnel:
+- A potential buyer sends a question (via n8n webhook)
+- The agent retrieves accurate answers from real property documents using RAG
+- It classifies the lead as **HOT**, **WARM**, or **COLD**
+- **HOT leads** → instant Telegram alert to the owner
+- **WARM leads** → formatted HTML email with agent response
+- **All leads** → logged to Google Sheets with timestamp and reason
+- The agent answers the buyer's question autonomously — no human required
+
+---
+
+## 🏗️ Architecture
+
+```
+n8n Webhook → HTTP Request → ngrok → Flask (server.py)
+                                           ↓
+                                    LangGraph Pipeline
+                                           ↓
+                              retrieve_context (Pinecone RAG)
+                                           ↓
+                              react_agent (gpt-4o-mini + Tavily)
+                                           ↓
+                              classify_lead (HOT / WARM / COLD)
+                                           ↓
+                              send_telegram (HOT only) → Python
+                                           ↓
+                              send_gmail (WARM only) → Python
+                                           ↓
+                              assemble_output → JSON → n8n
+                                           ↓
+                              Google Sheets (ALL leads) → n8n
+```
+
+### Lead Routing Logic
+
+| Lead Score | Telegram | Gmail | Google Sheets |
+|------------|----------|-------|---------------|
+| 🔥 HOT | ✅ | ❌ | ✅ |
+| 🌡️ WARM | ❌ | ✅ | ✅ |
+| 🧊 COLD | ❌ | ❌ | ✅ |
+
+---
+
+## 📁 Project Structure
+
+```
+WEEK_5/
+├── apart_agent/
+│   ├── __init__.py
+│   ├── state.py                  # AgentState TypedDict
+│   ├── graph.py                  # LangGraph pipeline builder
+│   └── nodes/
+│       ├── __init__.py
+│       ├── retrieve_context.py   # Pinecone RAG retrieval
+│       ├── react_agent.py        # ReAct agent (gpt-4o-mini + Tavily)
+│       ├── classify_lead.py      # HOT/WARM/COLD classifier
+│       ├── assemble_output.py    # JSON output builder
+│       ├── send_telegram.py      # Telegram Bot API (HOT)
+│       └── send_gmail.py         # Gmail SMTP (WARM)
+├── agent.py                      # CLI entry point
+├── server.py                     # Flask server (POST /agent)
+├── apart_agent.ipynb             # Development notebook + test suite
+├── requirements.txt
+└── .env                          # API keys (never committed)
+```
+
+---
+
+## 🔧 Setup Instructions
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/pbiain/My_Projects.git
+cd My_Projects/WEEK_5
+```
+
+### 2. Create and activate conda environment
+
+```bash
+conda create -n ironhack_env python=3.12
+conda activate ironhack_env
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure environment variables
+
+Create a `.env` file in `WEEK_5/`:
+
+```env
+# OpenAI
+OPENAI_API_KEY=your_key_here
+
+# Pinecone
+PINECONE_API_KEY=your_key_here
+
+# Tavily
+TAVILY_API_KEY=your_key_here
+
+# Telegram
+TELEGRAM_BOT_TOKEN=your_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here
+
+# Gmail
+GMAIL_SENDER=your_email@gmail.com
+GMAIL_APP_PASSWORD=your_app_password_here
+GMAIL_RECIPIENT=recipient@gmail.com
+```
+
+> ⚠️ Never commit `.env` to GitHub. It is already in `.gitignore`.
+
+### 5. Run the Flask server
+
+```bash
+python server.py
+```
+
+Server starts on `http://localhost:5678`.
+
+### 6. Start ngrok (for n8n cloud integration)
+
+```bash
+ngrok http 5678
+```
+
+Copy the `https://` forwarding URL — this is what n8n calls.
+
+---
+
+## 🚀 Running the Agent
+
+### Option A — CLI (direct, no n8n)
+
+```bash
+python agent.py "Tengo un presupuesto de U$S 50.000. ¿Qué parcelas puedo comprar?"
+```
+
+### Option B — via n8n webhook (full pipeline)
+
+With `server.py` and ngrok running, trigger n8n with:
+
+```powershell
+$body = '{"message": "I am interested in buying a lot, what is the price?"}'
+Invoke-RestMethod -Uri "https://YOUR-N8N-WEBHOOK-URL/webhook/apart-agent" -Method POST -ContentType "application/json" -Body $body
+```
+
+---
+
+## 🧠 Technical Implementation
+
+### ReAct Pattern
+
+The ReAct (Reasoning + Acting) pattern is implemented inside `react_agent.py` using LangChain's `create_react_agent`. The agent:
+
+1. **Reasons** — reads the retrieved property context and the lead's question
+2. **Acts** — decides whether to call Tavily (only for market comparison questions)
+3. **Observes** — incorporates tool results into its reasoning
+4. **Answers** — produces a grounded final answer from real documents
+
+### LangGraph State Machine
+
+State flows linearly through 6 nodes:
+
+```
+retrieve_context → react_agent → classify_lead → send_telegram → send_gmail → assemble_output
+```
+
+Each node receives and returns the full `AgentState` TypedDict. Notification filtering is handled inside each node (not via conditional edges), making the graph simple and deterministic.
+
+### RAG System
+
+- **Vector database:** Pinecone (`n8n` index, 909 vectors, `text-embedding-3-large`, 1024 dimensions)
+- **Documents ingested:**
+  - `PROPUESTA_Actualizada` — 41 lots for sale, pricing (U$S 45–135/m²), parcel table, payment plans
+  - `Propuesta_de_inversión` — investment proposal, ROI projections, capitalist partner structure
+  - `REGLAMENTO_EDIFICACIÓN` — building regulations, construction rules, lot restrictions
+- **Retrieval:** Top-4 chunks by cosine similarity, formatted as context string for the agent
+
+### Lead Classification
+
+Zero-shot structured LLM call using `gpt-4o-mini` with `temperature=0`. Returns JSON `{score, reason}`.
+
+Classification criteria:
+- **HOT** — specific budget mentioned, asks about payment plans with intent to buy, mentions investment ROI, ready to proceed
+- **WARM** — general interest, asking about prices or availability, building regulations, no urgency
+- **COLD** — just browsing, vague, hypothetical, no real intent signals
+
+---
+
+## 🔌 API Integrations
+
+| Tool | Integration | Purpose |
+|------|-------------|---------|
+| **OpenAI** | LangChain (`gpt-4o-mini`, `text-embedding-3-large`) | LLM reasoning + embeddings |
+| **Pinecone** | `langchain_pinecone.PineconeVectorStore` | Vector search over property docs |
+| **Tavily** | LangChain `TavilySearchResults` tool | Real-time market comparison search |
+| **Telegram Bot API** | `requests` (direct HTTP) | HOT lead alerts to owner |
+| **Gmail** | `smtplib` SMTP SSL | WARM lead HTML email notifications |
+| **Google Sheets** | n8n `Append row in sheet` node | Full lead logging with timestamps |
+
+---
+
+## 🎨 Design Decisions
+
+### Tool Integration Strategy
+
+**LangChain tool interface (Tavily)**  
+Tavily is integrated via LangChain's tool interface, allowing the ReAct agent to autonomously decide when to search the web — only triggered when leads ask comparative market questions.
+
+**Direct Python integration (Telegram & Gmail)**  
+Telegram and Gmail are implemented as deterministic LangGraph nodes rather than LLM-controlled tools. This was a deliberate architectural choice: notifications should always fire based on hard rules (HOT → Telegram, WARM → Gmail), not probabilistic LLM reasoning. Deterministic behavior is more reliable in a production notification system.
+
+**n8n for orchestration, Python for logic**  
+n8n handles the webhook entry point and Google Sheets logging. All business logic (RAG, classification, notifications) runs in Python. This separation makes the Python agent independently testable and keeps n8n as a thin orchestration layer.
+
+### Flask + ngrok over n8n Execute Command
+
+The n8n cloud version used in this project does not support the Execute Command node. Flask + ngrok was chosen as an equivalent solution: Flask exposes the agent as an HTTP endpoint, and ngrok creates a tunnel from n8n cloud to the local server.
+
+---
+
+## ⚠️ Known Limitations & Future Improvements
+
+- **Chunking duplicates:** Some pricing table chunks are duplicated in Pinecone due to how n8n ingested the original documents. A re-ingestion with custom chunking (500–1000 token chunks preserving table rows) would improve retrieval precision.
+- **Zero-shot classification:** The lead classifier uses zero-shot prompting. Few-shot examples would improve consistency on edge cases.
+- **No persistent memory:** Each request is stateless — the agent has no memory of previous interactions with the same lead.
+- **ngrok dependency:** The current setup requires ngrok running locally. A production deployment would use a cloud-hosted Flask server (e.g. Railway, Render) with a fixed URL.
+- **Voice bot:** Real-time speech-to-text + text-to-speech layer could be added as a v2 feature without changing the core agent logic.
+
+---
+
+## 🧪 Test Suite
+
+Run the end-to-end test suite in `apart_agent.ipynb` (Cell 8):
+
+| Test | Input | Expected Score | Telegram | Email |
+|------|-------|---------------|----------|-------|
+| 1 | Price question | WARM | ❌ | ✅ |
+| 2 | Budget + payment plan | HOT | ✅ | ❌ |
+| 3 | Building regulations | WARM | ❌ | ✅ |
+| 4 | Just browsing | COLD | ❌ | ❌ |
+
+---
+
+## 📦 Requirements
+
+```
+langchain
+langchain-openai
+langchain-pinecone
+langchain-community
+langgraph
+pinecone-client
+flask
+python-dotenv
+requests
+tavily-python
+```
+
+Full list in `requirements.txt`.
+
+---
+
+## 📄 License
+
+Solo project — IronHack AI Bootcamp 2025. Not for commercial use.

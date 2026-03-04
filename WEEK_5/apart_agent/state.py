@@ -8,4 +8,5 @@ class AgentState(TypedDict):
     lead_score:        str
     score_reason:      str
     actions_taken:     List[str]
+    chat_history:      List[dict]   # [{"user": "...", "assistant": "..."}, ...]
     final_output:      dict
