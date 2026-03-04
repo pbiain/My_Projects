@@ -3,7 +3,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.prebuilt import create_react_agent
 
-from apart_agent.nodes.mercadolibre_tool import prospect_search
+from apart_agent.nodes.prospect_search_tool import prospect_search
 from apart_agent.nodes.hunter_tool import hunter_email_search
 
 LLM_MODEL = "gpt-4o-mini"
