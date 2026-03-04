@@ -1,15 +1,15 @@
-# 🏡 Apart Club San Pedro — Real Estate Sales Agent
+# 🏡 Amarras San Pedro — Real Estate Sales Agent
 
 > Autonomous AI agent that qualifies inbound real estate leads, answers buyer questions from property documents, and routes notifications — without human intervention.
 
-**Author:** Pedro Biain | **IronHack AI Bootcamp** | **Week 5 — Module 3**  
+**Author:** Pedro Biain | **IronHack AI Bootcamp** | **Week 5 — Module 3**
 **Stack:** Python 3.12 · LangGraph · LangChain · Pinecone · Flask · Railway · n8n · OpenAI · DuckDuckGo · Hunter.io · Telegram · Gmail · Google Sheets
 
 ---
 
 ## 📌 Project Overview
 
-Apart Club San Pedro is a nautical residential club development in San Pedro, Buenos Aires, Argentina. **Stage 2 (Club Náutico)** offers 46 waterfront lots ranging from 544m² to 850m², with direct river access, private docks, and navigable canals.
+Amarras San Pedro is a nautical residential club development in San Pedro, Buenos Aires, Argentina. **Boating I** offers waterfront lots ranging from 544m² to 1,188m², with direct river access, private docks, and navigable canals. Price: U$S 120/m².
 
 This agent automates the sales funnel:
 - A potential buyer sends a question (via n8n webhook)
@@ -189,12 +189,65 @@ Each node receives and returns the full `AgentState` TypedDict. Notification fil
 
 ### RAG System
 
-- **Vector database:** Pinecone (`n8n` index, 909 vectors, `text-embedding-3-large`, 1024 dimensions)
-- **Documents ingested:**
-  - `PROPUESTA_Actualizada` — 41 lots for sale, pricing (U$S 45–135/m²), parcel table, payment plans
-  - `Propuesta_de_inversión` — investment proposal, ROI projections, capitalist partner structure
-  - `REGLAMENTO_EDIFICACIÓN` — building regulations, construction rules, lot restrictions
-- **Retrieval:** Top-4 chunks by cosine similarity, formatted as context string for the agent
+- **Vector database:** Pinecone (`n8n` index, 69 vectors, `text-embedding-3-large`, 1024 dimensions)
+- **Documents ingested (2 clean docs):**
+  - `VALORES DE LOTES EN BOATING I.docx.pdf` — verified lot prices, parcel table, payment plans
+  - `REGLAMENTO EDIFICACION-BOATING I.pdf` — building regulations, construction rules, lot restrictions
+- **Retrieval:** Top-4 chunks filtered by cosine similarity score threshold (< 0.35 discarded), formatted as context string for the agent
+- **Price authority:** Verified lot prices are hardcoded in the system prompt and override any RAG result — prevents pricing errors from conflicting documents
+
+> **Note:** Two conflicting documents were removed from Pinecone (`Propuesta de inversión.pdf` contained wrong U$S 45/m² stage-2 pricing; a personal investment proposal PDF was not appropriate for a public chatbot). Pinecone was cleared and re-ingested from scratch with the 2 clean docs above.
+
+### RAG Quality Improvements
+
+Two techniques are implemented to prevent irrelevant retrieval, especially for short or vague follow-up messages.
+
+#### 1. Query Contextualization (implemented — `retrieve_context.py`)
+
+**Problem:** When a user sends a vague follow-up like *"how do I do that?"* or *"como hago eso?"*, the RAG query has no semantic content. Embedding a 4-word sentence retrieves random chunks (e.g., construction regulations) that have nothing to do with the conversation.
+
+**Solution:** If the user message is ≤ 6 words and there is conversation history, the previous assistant reply is prepended to the RAG query before embedding:
+
+```python
+if len(words) <= 6 and state.get("chat_history"):
+    last_turn = state["chat_history"][-1]
+    rag_query = f"{last_turn['assistant']} {user_msg}"
+else:
+    rag_query = user_msg
+```
+
+**Why it works:** *"You can contact us directly at Amarras San Pedro! how do I do that?"* embeds to a vector that retrieves contact/sales chunks instead of construction rules. The RAG now understands the topic from context.
+
+#### 2. Similarity Score Threshold (implemented — `retrieve_context.py`)
+
+**Problem:** `similarity_search` always returns k results regardless of how relevant they are. A cosine similarity of 0.2 means the chunk is barely related — yet it gets passed to the agent as authoritative context.
+
+**Solution:** `similarity_search_with_score` is used instead, and chunks below a cosine similarity threshold of 0.35 are discarded:
+
+```python
+results = vectorstore.similarity_search_with_score(rag_query, k=4)
+for doc, score in results:
+    if score < 0.35:
+        continue          # discard low-relevance chunks
+```
+
+If all chunks are discarded, the agent falls back to conversation history and its hardcoded knowledge of Amarras San Pedro (prices, lots, amenities).
+
+#### 3. Semantic Chunking (future improvement)
+
+**Problem:** Fixed-size chunking (`RecursiveCharacterTextSplitter`, 800 chars) can split a pricing table mid-row or mix two unrelated topics in one chunk, reducing retrieval precision.
+
+**Solution:** `SemanticChunker` (from `langchain_experimental`) uses the embedding model itself to detect topic boundaries. It splits where semantic similarity between consecutive sentences drops below a threshold — keeping each chunk topically coherent.
+
+```python
+from langchain_experimental.text_splitter import SemanticChunker
+from langchain_openai import OpenAIEmbeddings
+
+splitter = SemanticChunker(OpenAIEmbeddings(model="text-embedding-3-large"))
+chunks = splitter.split_documents(docs)
+```
+
+**Trade-off:** Requires re-ingesting Pinecone. Chunk count varies (can produce fewer, larger chunks). Adds cost since the splitter embeds every sentence to find boundaries. For a 2-document corpus, the quality gain is moderate — query contextualization + score filtering address the main issues first.
 
 ### Lead Classification
 
@@ -242,10 +295,10 @@ The n8n cloud version used in this project does not support the Execute Command 
 
 ## ⚠️ Known Limitations & Future Improvements
 
-- **Chunking duplicates:** Some pricing table chunks are duplicated in Pinecone due to how n8n ingested the original documents. A re-ingestion with custom chunking (500–1000 token chunks preserving table rows) would improve retrieval precision.
+- **Semantic chunking:** Fixed-size chunking (800 chars) can split pricing tables mid-row. Replacing `RecursiveCharacterTextSplitter` with `SemanticChunker` would produce topic-coherent chunks and improve retrieval precision — see RAG Quality Improvements above.
+- **Score threshold tuning:** The 0.35 cosine similarity cutoff was set conservatively. Logging retrieved scores in production would allow data-driven tuning.
 - **Zero-shot classification:** The lead classifier uses zero-shot prompting. Few-shot examples would improve consistency on edge cases.
-- **No persistent memory:** Each request is stateless — the agent has no memory of previous interactions with the same lead.
-- **Cloud deployment:** Deployed on Railway with a fixed public URL — ngrok is no longer required for the production setup.
+- **No cross-session memory:** Chat history is maintained within a session (sent from the frontend per turn) but is not persisted across browser reloads or separate sessions.
 - **Voice bot:** Real-time speech-to-text + text-to-speech layer could be added as a v2 feature without changing the core agent logic.
 
 ---
