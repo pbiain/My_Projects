@@ -24,4 +24,4 @@ pinecone==7.3.0
 pypdf==6.7.0
 
 # Web search
-ddgs==7.5.3
+ddgs>=9.0.0
