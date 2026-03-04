@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Amarras San Pedro — Prospect Research</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: url('/static/apart.jpg') center center / cover no-repeat fixed;
+      min-height: 100vh;
+      color: #1a1a2e;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 10, 30, 0.60);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    header {
+      background: rgba(10, 10, 30, 0.78);
+      backdrop-filter: blur(10px);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+      position: relative;
+      z-index: 1;
+    }
+
+    .header-text h1 { font-size: 17px; font-weight: 700; }
+    .header-text p  { font-size: 12px; opacity: 0.65; margin-top: 2px; }
+
+    .back-btn {
+      margin-left: auto;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: white;
+      border-radius: 20px;
+      padding: 7px 16px;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.22); }
+
+    main {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      gap: 20px;
+      max-width: 1180px;
+      margin: 28px auto;
+      padding: 0 20px 40px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .panel {
+      flex: 1;
+      min-width: 320px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(14px);
+      border-radius: 18px;
+      padding: 26px;
+      box-shadow: 0 6px 32px rgba(0,0,0,0.18);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 2px;
+    }
+
+    .panel-icon {
+      width: 40px;
+      height: 40px;
+      background: #1a1a2e;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .panel-title h2 { font-size: 16px; font-weight: 700; color: #1a1a2e; }
+    .panel-title p  { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .chip {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 5px 13px;
+      font-size: 12px;
+      cursor: pointer;
+      color: #475569;
+      transition: all 0.18s;
+    }
+    .chip:hover { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .input-row textarea,
+    .input-row input {
+      flex: 1;
+      padding: 11px 15px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+      background: white;
+    }
+    .input-row textarea { resize: none; min-height: 46px; max-height: 110px; }
+    .input-row textarea:focus,
+    .input-row input:focus { border-color: #1a1a2e; }
+
+    .btn {
+      background: #1a1a2e;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 11px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn:hover    { background: #2d2d5e; }
+    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    /* Loading */
+    .loading {
+      display: none;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      color: #64748b;
+      padding: 4px 0;
+    }
+    .loading.show { display: flex; }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid #e2e8f0;
+      border-top-color: #1a1a2e;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 13px;
+      padding: 32px 0;
+      line-height: 1.6;
+    }
+    .empty-icon { font-size: 28px; margin-bottom: 8px; }
+
+    /* DuckDuckGo results box */
+    .results-box {
+      display: none;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.75;
+      max-height: 440px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      color: #334155;
+    }
+    .results-box.show { display: block; }
+
+    /* Hunter table */
+    .org-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a1a2e;
+      display: none;
+    }
+
+    .table-wrap {
+      display: none;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+      max-height: 440px;
+      overflow-y: auto;
+    }
+    .table-wrap.show { display: block; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead th {
+      background: #f1f5f9;
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 600;
+      color: #475569;
+      border-bottom: 2px solid #e2e8f0;
+      white-space: nowrap;
+    }
+    tbody td {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f8fafc; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .hi  { background: #dcfce7; color: #16a34a; }
+    .mid { background: #fef3c7; color: #d97706; }
+    .lo  { background: #fee2e2; color: #dc2626; }
+
+    .email-link {
+      color: #1a1a2e;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .email-link:hover { text-decoration: underline; }
+
+    .logged-msg {
+      display: none;
+      font-size: 12px;
+      color: #16a34a;
+      font-weight: 600;
+    }
+    .logged-msg.show { display: block; }
+
+    .divider {
+      height: 1px;
+      background: #e2e8f0;
+      margin: 4px 0;
+    }
+
+    /* error */
+    .error-msg {
+      font-size: 13px;
+      color: #dc2626;
+      background: #fee2e2;
+      border-radius: 10px;
+      padding: 10px 14px;
+      display: none;
+    }
+    .error-msg.show { display: block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="font-size:26px">🔍</div>
+  <div class="header-text">
+    <h1>Prospect Research</h1>
+    <p>Amarras San Pedro &mdash; Outbound Intelligence</p>
+  </div>
+  <a href="/" class="back-btn">&#8592; Back to Chat</a>
+</header>
+
+<main>
+
+  <!-- LEFT: Market Search -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-icon">🌐</div>
+      <div class="panel-title">
+        <h2>Market Search</h2>
+        <p>Find agencies and investors via web search</p>
+      </div>
+    </div>
+
+    <div class="chips">
+      <span class="chip" onclick="useQuery('inmobiliarias san pedro buenos aires contacto')">Inmobiliarias San Pedro</span>
+      <span class="chip" onclick="useQuery('inversores inmuebles san pedro argentina')">Inversores San Pedro</span>
+      <span class="chip" onclick="useQuery('desarrolladores inmobiliarios zona norte Buenos Aires')">Zona Norte BA</span>
+      <span class="chip" onclick="useQuery('real estate agencies san pedro buenos aires')">En inglés</span>
+    </div>
+
+    <div class="input-row">
+      <textarea id="search-q" placeholder="Search for agencies, investors, buyers..." rows="1"></textarea>
+      <button class="btn" id="search-btn" onclick="runSearch()">Search</button>
+    </div>
+
+    <div class="loading" id="search-load"><div class="spinner"></div> Searching the web...</div>
+    <div class="error-msg" id="search-err"></div>
+
+    <div class="empty" id="search-empty">
+      <div class="empty-icon">🌐</div>
+      Use the chips above or enter your own query
+    </div>
+
+    <div class="results-box" id="search-results"></div>
+  </div>
+
+  <!-- RIGHT: Email Finder -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-icon">✉️</div>
+      <div class="panel-title">
+        <h2>Email Finder</h2>
+        <p>Find contacts at a company via Hunter.io &mdash; auto-logged to Sheets</p>
+      </div>
+    </div>
+
+    <div class="input-row">
+      <input type="text" id="domain-in" placeholder="e.g. remax.com.ar" />
+      <button class="btn" id="email-btn" onclick="findEmails()">Find</button>
+    </div>
+
+    <div class="loading" id="email-load"><div class="spinner"></div> Looking up contacts via Hunter.io...</div>
+    <div class="error-msg" id="email-err"></div>
+
+    <div class="empty" id="email-empty">
+      <div class="empty-icon">✉️</div>
+      Enter a company domain to find verified contacts
+    </div>
+
+    <div class="org-label" id="org-label"></div>
+
+    <div class="table-wrap" id="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Email</th>
+            <th>Confidence</th>
+          </tr>
+        </thead>
+        <tbody id="email-rows"></tbody>
+      </table>
+    </div>
+
+    <div class="logged-msg" id="logged-msg">&#10003; Contacts logged to Google Sheets</div>
+  </div>
+
+</main>
+
+<script>
+  function useQuery(q) {
+    document.getElementById('search-q').value = q;
+    autoResize(document.getElementById('search-q'));
+    runSearch();
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+  }
+
+  document.getElementById('search-q').addEventListener('input', function() { autoResize(this); });
+  document.getElementById('search-q').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runSearch(); }
+  });
+  document.getElementById('domain-in').addEventListener('keydown', e => {
+    if (e.key === 'Enter') findEmails();
+  });
+
+  async function runSearch() {
+    const query = document.getElementById('search-q').value.trim();
+    if (!query) return;
+
+    const btn = document.getElementById('search-btn');
+    btn.disabled = true;
+    document.getElementById('search-load').classList.add('show');
+    document.getElementById('search-empty').style.display = 'none';
+    document.getElementById('search-results').classList.remove('show');
+    document.getElementById('search-err').classList.remove('show');
+
+    try {
+      const resp = await fetch('/run-outbound', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      });
+      const data = await resp.json();
+      if (data.error) {
+        document.getElementById('search-err').textContent = data.error;
+        document.getElementById('search-err').classList.add('show');
+      } else {
+        const box = document.getElementById('search-results');
+        box.textContent = data.results;
+        box.classList.add('show');
+      }
+    } catch {
+      document.getElementById('search-err').textContent = 'Connection error. Please try again.';
+      document.getElementById('search-err').classList.add('show');
+    }
+
+    document.getElementById('search-load').classList.remove('show');
+    btn.disabled = false;
+  }
+
+  async function findEmails() {
+    const domain = document.getElementById('domain-in').value.trim();
+    if (!domain) return;
+
+    const btn = document.getElementById('email-btn');
+    btn.disabled = true;
+    document.getElementById('email-load').classList.add('show');
+    document.getElementById('email-empty').style.display = 'none';
+    document.getElementById('table-wrap').classList.remove('show');
+    document.getElementById('logged-msg').classList.remove('show');
+    document.getElementById('org-label').style.display = 'none';
+    document.getElementById('email-err').classList.remove('show');
+
+    try {
+      const resp = await fetch('/find-emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain }),
+      });
+      const data = await resp.json();
+
+      if (data.error) {
+        document.getElementById('email-err').textContent = data.error;
+        document.getElementById('email-err').classList.add('show');
+      } else {
+        document.getElementById('org-label').textContent = `${data.organization}  ·  ${data.domain}`;
+        document.getElementById('org-label').style.display = 'block';
+
+        const tbody = document.getElementById('email-rows');
+        tbody.innerHTML = '';
+        for (const c of data.contacts) {
+          const conf = c.confidence;
+          const cls = conf >= 70 ? 'hi' : conf >= 40 ? 'mid' : 'lo';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${c.name}</td>
+            <td style="color:#64748b">${c.position}</td>
+            <td><a class="email-link" href="mailto:${c.email}">${c.email}</a></td>
+            <td><span class="badge ${cls}">${conf}%</span></td>
+          `;
+          tbody.appendChild(tr);
+        }
+
+        document.getElementById('table-wrap').classList.add('show');
+        document.getElementById('logged-msg').classList.add('show');
+      }
+    } catch {
+      document.getElementById('email-err').textContent = 'Connection error. Please try again.';
+      document.getElementById('email-err').classList.add('show');
+    }
+
+    document.getElementById('email-load').classList.remove('show');
+    btn.disabled = false;
+  }
+</script>
+
+</body>
+</html>
