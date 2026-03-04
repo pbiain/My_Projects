@@ -3,7 +3,7 @@
 > Autonomous AI agent that qualifies inbound real estate leads, answers buyer questions from property documents, and routes notifications — without human intervention.
 
 **Author:** Pedro Biain | **IronHack AI Bootcamp** | **Week 5 — Module 3**  
-**Stack:** Python 3.12 · LangGraph · LangChain · Pinecone · Flask · ngrok · n8n · OpenAI · Tavily · Telegram · Gmail · Google Sheets
+**Stack:** Python 3.12 · LangGraph · LangChain · Pinecone · Flask · Railway · n8n · OpenAI · DuckDuckGo · Hunter.io · Telegram · Gmail · Google Sheets
 
 ---
 
@@ -31,7 +31,7 @@ n8n Webhook → HTTP Request → ngrok → Flask (server.py)
                                            ↓
                               retrieve_context (Pinecone RAG)
                                            ↓
-                              react_agent (gpt-4o-mini + Tavily)
+                              react_agent (gpt-4o-mini + DuckDuckGo + Hunter.io)
                                            ↓
                               classify_lead (HOT / WARM / COLD)
                                            ↓
@@ -65,7 +65,9 @@ WEEK_5/
 │   └── nodes/
 │       ├── __init__.py
 │       ├── retrieve_context.py   # Pinecone RAG retrieval
-│       ├── react_agent.py        # ReAct agent (gpt-4o-mini + Tavily)
+│       ├── react_agent.py        # ReAct agent (gpt-4o-mini + DuckDuckGo + Hunter.io)
+│       ├── prospect_search_tool.py  # DuckDuckGo web search tool
+│       ├── hunter_tool.py        # Hunter.io email finder tool
 │       ├── classify_lead.py      # HOT/WARM/COLD classifier
 │       ├── assemble_output.py    # JSON output builder
 │       ├── send_telegram.py      # Telegram Bot API (HOT)
@@ -112,8 +114,8 @@ OPENAI_API_KEY=your_key_here
 # Pinecone
 PINECONE_API_KEY=your_key_here
 
-# Tavily
-TAVILY_API_KEY=your_key_here
+# Hunter.io
+HUNTER_API_KEY=your_key_here
 
 # Telegram
 TELEGRAM_BOT_TOKEN=your_token_here
@@ -171,7 +173,7 @@ Invoke-RestMethod -Uri "https://YOUR-N8N-WEBHOOK-URL/webhook/apart-agent" -Metho
 The ReAct (Reasoning + Acting) pattern is implemented inside `react_agent.py` using LangChain's `create_react_agent`. The agent:
 
 1. **Reasons** — reads the retrieved property context and the lead's question
-2. **Acts** — decides whether to call Tavily (only for market comparison questions)
+2. **Acts** — decides whether to call DuckDuckGo (market research) or Hunter.io (email lookup)
 3. **Observes** — incorporates tool results into its reasoning
 4. **Answers** — produces a grounded final answer from real documents
 
@@ -211,7 +213,8 @@ Classification criteria:
 |------|-------------|---------|
 | **OpenAI** | LangChain (`gpt-4o-mini`, `text-embedding-3-large`) | LLM reasoning + embeddings |
 | **Pinecone** | `langchain_pinecone.PineconeVectorStore` | Vector search over property docs |
-| **Tavily** | LangChain `TavilySearchResults` tool | Real-time market comparison search |
+| **DuckDuckGo** | LangChain `DuckDuckGoSearchRun` tool | Real estate agency & lead prospect search |
+| **Hunter.io** | `hunter_tool.py` via REST API | Email finder for outbound prospecting |
 | **Telegram Bot API** | `requests` (direct HTTP) | HOT lead alerts to owner |
 | **Gmail** | `smtplib` SMTP SSL | WARM lead HTML email notifications |
 | **Google Sheets** | n8n `Append row in sheet` node | Full lead logging with timestamps |
@@ -222,8 +225,8 @@ Classification criteria:
 
 ### Tool Integration Strategy
 
-**LangChain tool interface (Tavily)**  
-Tavily is integrated via LangChain's tool interface, allowing the ReAct agent to autonomously decide when to search the web — only triggered when leads ask comparative market questions.
+**LangChain tool interface (DuckDuckGo + Hunter.io)**
+DuckDuckGo and Hunter.io are integrated via LangChain's `@tool` decorator, allowing the ReAct agent to autonomously decide when to search for real estate agencies or find professional email contacts.
 
 **Direct Python integration (Telegram & Gmail)**  
 Telegram and Gmail are implemented as deterministic LangGraph nodes rather than LLM-controlled tools. This was a deliberate architectural choice: notifications should always fire based on hard rules (HOT → Telegram, WARM → Gmail), not probabilistic LLM reasoning. Deterministic behavior is more reliable in a production notification system.
@@ -242,7 +245,7 @@ The n8n cloud version used in this project does not support the Execute Command 
 - **Chunking duplicates:** Some pricing table chunks are duplicated in Pinecone due to how n8n ingested the original documents. A re-ingestion with custom chunking (500–1000 token chunks preserving table rows) would improve retrieval precision.
 - **Zero-shot classification:** The lead classifier uses zero-shot prompting. Few-shot examples would improve consistency on edge cases.
 - **No persistent memory:** Each request is stateless — the agent has no memory of previous interactions with the same lead.
-- **ngrok dependency:** The current setup requires ngrok running locally. A production deployment would use a cloud-hosted Flask server (e.g. Railway, Render) with a fixed URL.
+- **Cloud deployment:** Deployed on Railway with a fixed public URL — ngrok is no longer required for the production setup.
 - **Voice bot:** Real-time speech-to-text + text-to-speech layer could be added as a v2 feature without changing the core agent logic.
 
 ---
@@ -272,7 +275,8 @@ pinecone-client
 flask
 python-dotenv
 requests
-tavily-python
+ddgs
+hunter-python
 ```
 
 Full list in `requirements.txt`.
