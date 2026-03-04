@@ -83,6 +83,14 @@ def run_outbound():
         results = _ddg.run(query)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+    # Log search to n8n Outbound Prospects sheet
+    threading.Thread(target=notify_n8n, args=({
+        "type": "outbound", "company": "—", "domain": "—",
+        "name": "Market Search", "position": query,
+        "email": "—", "potential": "SEARCH",
+    },), daemon=True).start()
+
     return jsonify({"results": results})
 
 
@@ -112,7 +120,12 @@ def find_emails():
     organization = hunter_data.get("organization", domain)
 
     if not emails:
-        return jsonify({"error": f"No contacts found for {domain}"}), 404
+        # Log the attempt even with no results
+        threading.Thread(target=notify_n8n, args=({
+            "type": "outbound", "company": organization, "domain": domain,
+            "name": "—", "position": "—", "email": "—", "potential": "NOT FOUND",
+        },), daemon=True).start()
+        return jsonify({"error": f"No contacts found for {domain}. Hunter.io has limited coverage of Argentine local companies — try larger domains like remax.com.ar or zonaprop.com.ar"}), 404
 
     contacts = []
     for e in emails:
