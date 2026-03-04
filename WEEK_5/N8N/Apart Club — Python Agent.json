@@ -39,7 +39,7 @@
           "value": {
             "Score": "={{$json.body.score}}",
             "Reason": "={{$json.body.score_reason}}",
-            "Timestamp": "={{$now}}",
+            "Timestamp": "={{$now.toFormat('dd/MM/yyyy HH:mm:ss')}}",
             "Message ": "={{$json.body.original_message}}",
             "Trigger": "={{$json.body.trigger}}"
           },
@@ -200,7 +200,7 @@
             "Domain": "={{$json.body.domain}}",
             "Email": "={{$json.body.email}}",
             "Potential": "={{$json.body.potential}}",
-            "Timestamp": "=={{$now}}"
+            "Timestamp": "={{$now.toFormat('dd/MM/yyyy HH:mm:ss')}}"
           },
           "matchingColumns": [],
           "schema": [
@@ -308,13 +308,13 @@
       ]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "dc191abd-a1fc-4fb4-9592-f7e4dfa09f86",
+  "versionId": "827b4915-e103-478a-baeb-f3724b7bfcd9",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "6722e5b359be25290452eaacf73e60baa0110827e5b18a50dae7252a3b5da3a7"
