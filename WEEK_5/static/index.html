@@ -44,6 +44,47 @@
       box-shadow: 0 0 6px #4ade80;
     }
 
+    #hero {
+      width: 100%;
+      height: 220px;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    #hero img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    #hero .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(26,26,46,0.7));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 20px;
+      text-align: center;
+    }
+
+    #hero .hero-overlay h2 {
+      color: white;
+      font-size: 22px;
+      font-weight: 700;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    #hero .hero-overlay p {
+      color: rgba(255,255,255,0.85);
+      font-size: 13px;
+      margin-top: 4px;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    }
+
     #chat-window {
       flex: 1;
       overflow-y: auto;
@@ -205,6 +246,14 @@
   </div>
   <div class="status-dot" title="Online"></div>
 </header>
+
+<div id="hero">
+  <img src="/static/apart.jpg" alt="Apart Club San Pedro" />
+  <div class="hero-overlay">
+    <h2>Apart Club San Pedro</h2>
+    <p>Waterfront lots · San Pedro, Buenos Aires · From U$S 65,160</p>
+  </div>
+</div>
 
 <div id="chat-window">
   <div class="message agent">
