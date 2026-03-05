@@ -4,105 +4,190 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Amarras San Pedro — Prospect Research</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --navy:    #0a0f2e;
+      --navy2:   #151c4a;
+      --gold:    #c9a84c;
+      --gold2:   #e8c96a;
+      --surface: rgba(255,255,255,0.97);
+      --border:  #e4e9f2;
+      --text:    #0f172a;
+      --muted:   #64748b;
+      --faint:   #f4f6fb;
+      --green:   #16a34a;
+      --red:     #dc2626;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', Arial, sans-serif;
+      font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
       background: url('/static/apart.jpg') center center / cover no-repeat fixed;
       min-height: 100vh;
-      color: #1a1a2e;
+      color: var(--text);
     }
 
     body::before {
       content: '';
       position: fixed;
       inset: 0;
-      background: rgba(10, 10, 30, 0.60);
+      background: linear-gradient(160deg, rgba(10,15,46,0.72) 0%, rgba(10,15,46,0.55) 100%);
       z-index: 0;
       pointer-events: none;
     }
 
+    /* ── HEADER ── */
     header {
-      background: rgba(10, 10, 30, 0.78);
-      backdrop-filter: blur(10px);
+      background: rgba(10, 15, 46, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       color: white;
-      padding: 16px 24px;
+      padding: 0 32px;
+      height: 62px;
       display: flex;
       align-items: center;
-      gap: 14px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+      gap: 16px;
+      border-bottom: 1px solid rgba(201,168,76,0.30);
       position: relative;
-      z-index: 1;
+      z-index: 10;
     }
 
-    .header-text h1 { font-size: 17px; font-weight: 700; }
-    .header-text p  { font-size: 12px; opacity: 0.65; margin-top: 2px; }
+    .header-logo {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(201,168,76,0.35);
+    }
+
+    .header-text h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+    .header-text p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.50);
+      margin-top: 1px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .header-divider {
+      width: 1px; height: 28px;
+      background: rgba(255,255,255,0.15);
+      margin: 0 6px;
+    }
+
+    .header-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gold);
+      background: rgba(201,168,76,0.12);
+      border: 1px solid rgba(201,168,76,0.28);
+      border-radius: 20px;
+      padding: 3px 11px;
+      letter-spacing: 0.3px;
+    }
 
     .back-btn {
       margin-left: auto;
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.25);
-      color: white;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: rgba(255,255,255,0.85);
       border-radius: 20px;
-      padding: 7px 16px;
-      font-size: 13px;
+      padding: 7px 18px;
+      font-size: 12px;
+      font-weight: 500;
       font-family: inherit;
       cursor: pointer;
       text-decoration: none;
-      transition: background 0.2s;
+      transition: all 0.2s;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
+      letter-spacing: 0.1px;
     }
-    .back-btn:hover { background: rgba(255,255,255,0.22); }
+    .back-btn:hover {
+      background: rgba(255,255,255,0.16);
+      border-color: rgba(255,255,255,0.30);
+      color: white;
+    }
 
+    /* ── LAYOUT ── */
     main {
       position: relative;
       z-index: 1;
       display: flex;
-      gap: 20px;
+      gap: 22px;
       max-width: 1400px;
       margin: 28px auto;
-      padding: 0 20px 40px;
+      padding: 0 24px 48px;
       flex-wrap: wrap;
       align-items: stretch;
     }
 
+    /* ── PANELS ── */
     .panel {
       flex: 1;
-      min-width: 320px;
-      background: rgba(255, 255, 255, 0.94);
-      backdrop-filter: blur(14px);
-      border-radius: 18px;
-      padding: 26px;
-      box-shadow: 0 6px 32px rgba(0,0,0,0.18);
+      min-width: 340px;
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 8px 40px rgba(10,15,46,0.22), 0 1px 0 rgba(255,255,255,0.6) inset;
+      border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 18px;
     }
 
     .panel-header {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 2px;
+      gap: 14px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
     }
 
     .panel-icon {
-      width: 40px;
-      height: 40px;
-      background: #1a1a2e;
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
       border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 19px;
       flex-shrink: 0;
+      box-shadow: 0 3px 10px rgba(10,15,46,0.25);
     }
 
-    .panel-title h2 { font-size: 16px; font-weight: 700; color: #1a1a2e; }
-    .panel-title p  { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .panel-title h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+    .panel-title p {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── CHIPS ── */
+    .chips-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      margin-bottom: -8px;
+    }
 
     .chips {
       display: flex;
@@ -110,207 +195,235 @@
       gap: 7px;
     }
     .chip {
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
+      background: var(--faint);
+      border: 1.5px solid var(--border);
       border-radius: 20px;
-      padding: 5px 13px;
+      padding: 5px 14px;
       font-size: 12px;
+      font-weight: 500;
       cursor: pointer;
-      color: #475569;
+      color: var(--muted);
       transition: all 0.18s;
+      font-family: inherit;
     }
-    .chip:hover { background: #1a1a2e; color: white; border-color: #1a1a2e; }
+    .chip:hover {
+      background: var(--navy);
+      color: var(--gold);
+      border-color: var(--navy);
+    }
 
+    /* ── INPUT ── */
     .input-row {
       display: flex;
       gap: 8px;
       align-items: flex-end;
     }
 
-    .input-row textarea,
-    .input-row input {
+    .input-row textarea {
       flex: 1;
-      padding: 11px 15px;
-      border: 1.5px solid #cbd5e1;
+      padding: 11px 16px;
+      border: 1.5px solid var(--border);
       border-radius: 12px;
-      font-size: 14px;
+      font-size: 13.5px;
       font-family: inherit;
       outline: none;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
       background: white;
+      resize: none;
+      min-height: 46px;
+      max-height: 110px;
+      color: var(--text);
     }
-    .input-row textarea { resize: none; min-height: 46px; max-height: 110px; }
-    .input-row textarea:focus,
-    .input-row input:focus { border-color: #1a1a2e; }
+    .input-row textarea:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+    }
+    .input-row textarea::placeholder { color: #b0bac9; }
 
     .btn {
-      background: #1a1a2e;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
       color: white;
       border: none;
       border-radius: 12px;
-      padding: 11px 20px;
-      font-size: 14px;
+      padding: 11px 22px;
+      font-size: 13.5px;
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
       flex-shrink: 0;
-      transition: background 0.2s;
+      transition: all 0.2s;
       white-space: nowrap;
+      box-shadow: 0 3px 10px rgba(10,15,46,0.25);
+      letter-spacing: 0.1px;
     }
-    .btn:hover    { background: #2d2d5e; }
-    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn:hover    { background: linear-gradient(135deg, var(--navy2) 0%, #1e2870 100%); box-shadow: 0 4px 16px rgba(10,15,46,0.35); }
+    .btn:disabled { background: #cbd5e1; box-shadow: none; cursor: not-allowed; }
 
-    /* Loading */
+    /* ── LOADING ── */
     .loading {
       display: none;
       align-items: center;
-      gap: 9px;
-      font-size: 13px;
-      color: #64748b;
+      gap: 10px;
+      font-size: 12.5px;
+      color: var(--muted);
       padding: 4px 0;
     }
     .loading.show { display: flex; }
     .spinner {
       width: 16px; height: 16px;
-      border: 2px solid #e2e8f0;
-      border-top-color: #1a1a2e;
+      border: 2px solid var(--border);
+      border-top-color: var(--gold);
       border-radius: 50%;
       animation: spin 0.75s linear infinite;
       flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Empty state */
+    /* ── EMPTY STATE ── */
     .empty {
       text-align: center;
-      color: #94a3b8;
+      color: #b0bac9;
       font-size: 13px;
-      padding: 32px 0;
-      line-height: 1.6;
+      padding: 36px 0;
+      line-height: 1.7;
     }
-    .empty-icon { font-size: 28px; margin-bottom: 8px; }
+    .empty-icon { font-size: 30px; margin-bottom: 10px; }
 
-    /* Query tag */
+    /* ── QUERY TAG / COUNT ── */
     .query-tag {
       display: none;
       font-size: 11px;
-      color: #64748b;
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
+      color: var(--muted);
+      background: var(--faint);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 5px 10px;
+      padding: 5px 12px;
     }
     .query-tag.show { display: block; }
-    .query-tag strong { color: #1a1a2e; }
+    .query-tag strong { color: var(--text); }
 
     .results-count {
       display: none;
-      font-size: 12px;
-      color: #64748b;
+      font-size: 11.5px;
+      color: var(--muted);
       font-weight: 600;
+      letter-spacing: 0.2px;
     }
     .results-count.show { display: block; }
 
-    /* Contact cards */
+    /* ── CONTACT CARDS ── */
     .contacts-grid {
       display: none;
       flex-direction: column;
-      gap: 9px;
+      gap: 8px;
       max-height: 420px;
       overflow-y: auto;
+      padding-right: 2px;
     }
     .contacts-grid.show { display: flex; }
+    .contacts-grid::-webkit-scrollbar { width: 5px; }
+    .contacts-grid::-webkit-scrollbar-track { background: transparent; }
+    .contacts-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
     .contact-card {
       background: white;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 13px 15px;
+      border: 1.5px solid var(--border);
+      border-radius: 13px;
+      padding: 12px 15px;
       display: flex;
       align-items: center;
       gap: 13px;
+      transition: all 0.18s;
     }
+    .contact-card:hover {
+      border-color: var(--gold);
+      box-shadow: 0 3px 12px rgba(201,168,76,0.12);
+    }
+
     .card-avatar {
       width: 36px; height: 36px;
-      background: #1a1a2e;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
       border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 17px;
+      font-size: 16px;
       flex-shrink: 0;
     }
     .card-body { flex: 1; min-width: 0; }
     .card-company {
-      font-weight: 700;
+      font-weight: 600;
       font-size: 13px;
-      color: #1a1a2e;
+      color: var(--text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .card-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-top: 5px;
-    }
-    .card-chip {
+    .card-snippet {
       font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 6px;
-      border: 1px solid #e2e8f0;
-      background: #f1f5f9;
-      color: #475569;
+      color: var(--muted);
+      margin-top: 3px;
       white-space: nowrap;
-      max-width: 190px;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .card-chip.domain { color: #0369a1; background: #e0f2fe; border-color: #bae6fd; cursor: default; }
-    .card-chip.email  { color: #15803d; background: #dcfce7; border-color: #bbf7d0; }
 
     .hunt-btn {
-      background: #1a1a2e;
-      color: white;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%);
+      color: var(--navy);
       border: none;
       border-radius: 8px;
-      padding: 7px 12px;
-      font-size: 12px;
-      font-weight: 600;
+      padding: 7px 13px;
+      font-size: 11.5px;
+      font-weight: 700;
       font-family: inherit;
       cursor: pointer;
       flex-shrink: 0;
-      transition: background 0.2s;
+      transition: all 0.18s;
       white-space: nowrap;
+      letter-spacing: 0.1px;
+      box-shadow: 0 2px 6px rgba(201,168,76,0.30);
     }
-    .hunt-btn:hover { background: #2d2d5e; }
+    .hunt-btn:hover {
+      background: linear-gradient(135deg, var(--gold2) 0%, var(--gold) 100%);
+      box-shadow: 0 3px 10px rgba(201,168,76,0.45);
+      transform: translateY(-1px);
+    }
 
     .no-results {
       display: none;
       text-align: center;
-      color: #94a3b8;
+      color: #b0bac9;
       font-size: 13px;
-      padding: 28px 0;
-      line-height: 1.6;
+      padding: 30px 0;
+      line-height: 1.7;
     }
     .no-results.show { display: block; }
 
-    /* Hunter table */
+    /* ── ORG LABEL ── */
     .org-label {
-      font-size: 14px;
-      font-weight: 700;
-      color: #1a1a2e;
       display: none;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      background: var(--faint);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 14px;
+      letter-spacing: -0.1px;
     }
 
+    /* ── TABLE ── */
     .table-wrap {
       display: none;
-      border-radius: 12px;
-      border: 1px solid #e2e8f0;
+      border-radius: 13px;
+      border: 1.5px solid var(--border);
       overflow: hidden;
       max-height: 440px;
       overflow-y: auto;
     }
     .table-wrap.show { display: block; }
+    .table-wrap::-webkit-scrollbar { width: 5px; }
+    .table-wrap::-webkit-scrollbar-track { background: transparent; }
+    .table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
     table {
       width: 100%;
@@ -323,69 +436,71 @@
     table colgroup col:nth-child(3) { width: 34%; }
     table colgroup col:nth-child(4) { width: 16%; }
     table colgroup col:nth-child(5) { width: 12%; }
+
     thead th {
-      background: #f1f5f9;
-      padding: 8px 10px;
+      background: var(--faint);
+      padding: 10px 12px;
       text-align: left;
       font-weight: 600;
-      color: #475569;
-      border-bottom: 2px solid #e2e8f0;
+      font-size: 10.5px;
+      color: var(--muted);
+      border-bottom: 1.5px solid var(--border);
       white-space: nowrap;
       overflow: hidden;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
     tbody td {
-      padding: 8px 10px;
-      border-bottom: 1px solid #f1f5f9;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--faint);
       vertical-align: middle;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: #f8fafc; }
+    tbody tr:hover td { background: #f8faff; }
 
     .badge {
       display: inline-block;
       padding: 3px 9px;
-      border-radius: 10px;
+      border-radius: 20px;
       font-size: 11px;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.2px;
     }
-    .hi  { background: #dcfce7; color: #16a34a; }
-    .mid { background: #fef3c7; color: #d97706; }
+    .hi  { background: #dcfce7; color: #15803d; }
+    .mid { background: #fef3c7; color: #b45309; }
     .lo  { background: #fee2e2; color: #dc2626; }
 
     .email-link {
-      color: #1a1a2e;
+      color: var(--navy2);
       text-decoration: none;
       font-weight: 500;
     }
-    .email-link:hover { text-decoration: underline; }
+    .email-link:hover { color: var(--gold); text-decoration: underline; }
 
+    /* ── LOGGED MSG ── */
     .logged-msg {
       display: none;
       font-size: 12px;
-      color: #16a34a;
+      color: var(--green);
       font-weight: 600;
+      align-items: center;
+      gap: 6px;
     }
-    .logged-msg.show { display: block; }
+    .logged-msg.show { display: flex; }
 
-    .divider {
-      height: 1px;
-      background: #e2e8f0;
-      margin: 4px 0;
-    }
-
-    /* error */
+    /* ── ERROR ── */
     .error-msg {
-      font-size: 13px;
-      color: #dc2626;
-      background: #fee2e2;
+      font-size: 12.5px;
+      color: var(--red);
+      background: #fef2f2;
+      border: 1px solid #fecaca;
       border-radius: 10px;
       padding: 10px 14px;
       display: none;
+      line-height: 1.5;
     }
     .error-msg.show { display: block; }
   </style>
@@ -393,11 +508,13 @@
 <body>
 
 <header>
-  <div style="font-size:26px">🔍</div>
+  <div class="header-logo">⚓</div>
   <div class="header-text">
     <h1>Prospect Research</h1>
-    <p>Amarras San Pedro &mdash; Outbound Intelligence</p>
+    <p>Amarras San Pedro</p>
   </div>
+  <div class="header-divider"></div>
+  <span class="header-badge">Outbound Intelligence</span>
   <a href="/" class="back-btn">&#8592; Back to Chat</a>
 </header>
 
@@ -409,10 +526,11 @@
       <div class="panel-icon">🌐</div>
       <div class="panel-title">
         <h2>Market Search</h2>
-        <p>Find agencies and investors via web search</p>
+        <p>Find agencies and investors via Tavily web search</p>
       </div>
     </div>
 
+    <div class="chips-label">Quick searches</div>
     <div class="chips">
       <span class="chip" onclick="useQuery('inmobiliarias terrenos frente al río san pedro buenos aires')">Inmobiliarias San Pedro</span>
       <span class="chip" onclick="useQuery('inversores extranjeros terrenos náuticos waterfront argentina')">Inversores Náuticos</span>
@@ -425,20 +543,20 @@
       <button class="btn" id="search-btn" onclick="runSearch()">Search</button>
     </div>
 
-    <div class="loading" id="search-load"><div class="spinner"></div> Searching and extracting contacts...</div>
+    <div class="loading" id="search-load"><div class="spinner"></div> Searching and extracting contacts…</div>
     <div class="error-msg" id="search-err"></div>
 
     <div class="empty" id="search-empty">
       <div class="empty-icon">🌐</div>
-      Use the chips above or enter your own query
+      Select a quick search above or enter a custom query
     </div>
 
-    <div class="query-tag" id="query-tag">Searched: <strong id="query-used"></strong></div>
+    <div class="query-tag" id="query-tag">Search: <strong id="query-used"></strong></div>
     <div class="results-count" id="results-count"></div>
     <div class="contacts-grid" id="contacts-grid"></div>
     <div class="no-results" id="no-results">
-      <div class="empty-icon" style="font-size:22px;margin-bottom:6px">🔍</div>
-      No companies found. Try a more specific query<br>or include a location (e.g. "san pedro").
+      <div class="empty-icon" style="font-size:24px;margin-bottom:8px">🔍</div>
+      No companies found. Try a broader query<br>or include a location (e.g. "san pedro").
     </div>
   </div>
 
@@ -447,17 +565,17 @@
     <div class="panel-header">
       <div class="panel-icon">✉️</div>
       <div class="panel-title">
-        <h2>Email Finder</h2>
-        <p>Find contacts at a company via Hunter.io &mdash; auto-logged to Sheets</p>
+        <h2>Contact Finder</h2>
+        <p>Professional emails &amp; phones via Hunter.io — auto-logged to Sheets</p>
       </div>
     </div>
 
-    <div class="loading" id="email-load"><div class="spinner"></div> Looking up contacts via Hunter.io...</div>
+    <div class="loading" id="email-load"><div class="spinner"></div> Looking up contacts via Hunter.io…</div>
     <div class="error-msg" id="email-err"></div>
 
     <div class="empty" id="email-empty">
       <div class="empty-icon">✉️</div>
-      Click "Find Contacts →" on any result to look up emails
+      Click <strong style="color:var(--navy)">Find Contacts →</strong> on any result<br>to look up emails and phone numbers
     </div>
 
     <div class="org-label" id="org-label"></div>
@@ -480,7 +598,10 @@
       </table>
     </div>
 
-    <div class="logged-msg" id="logged-msg">&#10003; Contacts logged to Google Sheets</div>
+    <div class="logged-msg" id="logged-msg">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="#dcfce7"/><path d="M4 7l2 2 4-4" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Contacts logged to Google Sheets
+    </div>
   </div>
 
 </main>
@@ -501,6 +622,7 @@
   document.getElementById('search-q').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runSearch(); }
   });
+
   function autoHunt(domain) {
     findEmails(domain);
     document.getElementById('email-load').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -531,7 +653,6 @@
         document.getElementById('search-err').textContent = data.error;
         document.getElementById('search-err').classList.add('show');
       } else {
-        // Show actual query used when auto-enhanced
         if (data.query_used && data.query_used !== query) {
           document.getElementById('query-used').textContent = data.query_used;
           document.getElementById('query-tag').classList.add('show');
@@ -555,7 +676,7 @@
               <div class="card-avatar">🌐</div>
               <div class="card-body">
                 <div class="card-company">${c.domain || 'Unknown'}</div>
-                ${c.company ? `<div class="card-meta"><span class="card-chip" style="font-size:11px;color:#64748b">${c.company}</span></div>` : ''}
+                ${c.company ? `<div class="card-snippet">${c.company}</div>` : ''}
               </div>
               ${hasDomain
                 ? `<button class="hunt-btn" onclick="autoHunt('${c.domain}')">Find Contacts →</button>`
@@ -607,9 +728,9 @@
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${c.name}</td>
-            <td style="color:#64748b">${c.position}</td>
+            <td style="color:var(--muted)">${c.position}</td>
             <td><a class="email-link" href="mailto:${c.email}">${c.email}</a></td>
-            <td>${c.phone ? `<a class="email-link" href="tel:${c.phone}">${c.phone}</a>` : '<span style="color:#94a3b8">—</span>'}</td>
+            <td>${c.phone ? `<a class="email-link" href="tel:${c.phone}">${c.phone}</a>` : '<span style="color:#cbd5e1">—</span>'}</td>
             <td><span class="badge ${cls}">${conf}%</span></td>
           `;
           tbody.appendChild(tr);
