@@ -494,28 +494,21 @@
       bubble.textContent = text;
       wrapper.appendChild(bubble);
 
-      if (score && role === 'agent') {
-        const badge = document.createElement('span');
-        badge.className = `score-badge score-${score}`;
-        badge.textContent = score === 'HOT' ? '🔥 Hot lead' : score === 'WARM' ? '🌡️ Warm lead' : '🧊 Cold lead';
-        wrapper.appendChild(badge);
-
-        if (score === 'HOT') {
-          const cta = document.createElement('button');
-          cta.className = 'cta-btn';
-          cta.textContent = '📞 Get a call from an advisor';
-          cta.addEventListener('click', async () => {
-            cta.disabled = true;
-            cta.textContent = 'Sending...';
-            await logSession('cta_button');
-            cta.remove();
-            const confirm = document.createElement('div');
-            confirm.className = 'cta-confirmed';
-            confirm.textContent = '✅ An advisor will contact you shortly!';
-            wrapper.appendChild(confirm);
-          });
-          wrapper.appendChild(cta);
-        }
+      if (score === 'HOT' && role === 'agent') {
+        const cta = document.createElement('button');
+        cta.className = 'cta-btn';
+        cta.textContent = '📞 Get a call from an advisor';
+        cta.addEventListener('click', async () => {
+          cta.disabled = true;
+          cta.textContent = 'Sending...';
+          await logSession('cta_button');
+          cta.remove();
+          const confirm = document.createElement('div');
+          confirm.className = 'cta-confirmed';
+          confirm.textContent = '✅ An advisor will contact you shortly!';
+          wrapper.appendChild(confirm);
+        });
+        wrapper.appendChild(cta);
       }
 
       chatInner.appendChild(wrapper);
