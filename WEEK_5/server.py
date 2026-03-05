@@ -182,7 +182,8 @@ def find_emails():
         position = e.get("position") or "N/A"
         email_addr = e.get("value", "N/A")
         confidence = e.get("confidence", 0)
-        contacts.append({"name": name, "position": position, "email": email_addr, "confidence": confidence})
+        phone = e.get("phone_number", "") or ""
+        contacts.append({"name": name, "position": position, "email": email_addr, "confidence": confidence, "phone": phone})
         threading.Thread(target=notify_n8n, args=({
             "type": "outbound", "company": organization, "domain": domain,
             "name": name, "position": position, "email": email_addr,

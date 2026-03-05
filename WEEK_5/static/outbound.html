@@ -459,6 +459,7 @@
             <th>Name</th>
             <th>Role</th>
             <th>Email</th>
+            <th>Phone</th>
             <th>Confidence</th>
           </tr>
         </thead>
@@ -487,10 +488,6 @@
   document.getElementById('search-q').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runSearch(); }
   });
-  document.getElementById('domain-in').addEventListener('keydown', e => {
-    if (e.key === 'Enter') findEmails();
-  });
-
   function autoHunt(domain) {
     findEmails(domain);
     document.getElementById('email-load').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -599,6 +596,7 @@
             <td>${c.name}</td>
             <td style="color:#64748b">${c.position}</td>
             <td><a class="email-link" href="mailto:${c.email}">${c.email}</a></td>
+            <td>${c.phone ? `<a class="email-link" href="tel:${c.phone}">${c.phone}</a>` : '<span style="color:#94a3b8">—</span>'}</td>
             <td><span class="badge ${cls}">${conf}%</span></td>
           `;
           tbody.appendChild(tr);
