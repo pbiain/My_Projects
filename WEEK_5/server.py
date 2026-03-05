@@ -54,9 +54,16 @@ from apart_agent.nodes.send_gmail import send_gmail
 app = Flask(__name__, static_folder="static")
 graph = build_graph()
 
-HOT_KEYWORDS = {
-    "comprar", "precio", "lote", "interesado", "visitar", "pago", "cuota", "financ",
-    "buy", "price", "lot", "interested", "visit", "invest", "payment", "budget",
+# Strong buying intent — classify sync so CTA button appears in response
+STRONG_HOT_KEYWORDS = {
+    "comprar", "interesado", "me interesa", "quiero", "quisiera", "lo compro",
+    "buy", "interested", "i want", "i'd like to buy", "i'll take", "purchase",
+}
+
+# Softer signals — classify async (no CTA needed, just logging/notifications)
+SOFT_KEYWORDS = {
+    "precio", "lote", "visitar", "pago", "cuota", "financ",
+    "price", "lot", "visit", "invest", "payment", "budget",
 }
 
 
@@ -108,11 +115,24 @@ def run_agent():
     result = graph.invoke(state)
     output = result["final_output"]
 
-    # Trigger classification in background when there's enough signal
-    has_keyword  = any(kw in message.lower() for kw in HOT_KEYWORDS)
-    enough_turns = len(chat_history) >= 2
+    msg_lower = message.lower()
+    is_strong_hot = any(kw in msg_lower for kw in STRONG_HOT_KEYWORDS)
+    is_soft       = any(kw in msg_lower for kw in SOFT_KEYWORDS)
+    enough_turns  = len(chat_history) >= 2
 
-    if has_keyword or enough_turns:
+    if is_strong_hot:
+        # Sync: need the score NOW so the CTA button can appear in the response
+        state["final_output"] = output
+        state = classify_lead(state)
+        output["score"] = state["lead_score"]
+        output["score_reason"] = state["score_reason"]
+        threading.Thread(target=lambda: (
+            send_telegram(state) if state["lead_score"] == "HOT" else
+            send_gmail(state)    if state["lead_score"] == "WARM" else None,
+            notify_n8n(output)
+        ), daemon=True).start()
+    elif is_soft or enough_turns:
+        # Async: no CTA needed, just classify + notify in background
         state["final_output"] = output
         threading.Thread(target=classify_and_notify, args=(state,), daemon=True).start()
 
