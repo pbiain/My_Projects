@@ -92,16 +92,7 @@ N8N works best as a lightweight notification and logging layer, not as the orche
 
 The biggest lesson: N8N's visual workflows are powerful for simple routing but become impractical and inefficient when you need loops, complex state, or conditional logic that LangGraph handles naturally and more fluidly in Python. I ended up inverting the original architecture — instead of N8N calling Python, Python calls N8N. Much cleaner. I could have N8N call Python with a scheduled trigger and an HTTP request, but I still want the user to have more control over the research process, since one of the things that needs working is research data filtering.
 
-**Error handling in N8N and Python:**
-
-On the Python side, error handling is layered across the stack:
-- `classify_and_notify()` wraps the entire background thread in `try/except Exception: pass` so a classification failure never crashes the main response
-- `send_gmail.py` has a credentials guard — skips silently if `GMAIL_USER`/`GMAIL_PASS` env vars are not set, and uses a 5s SMTP timeout to prevent gunicorn worker timeouts on Railway (a real bug I hit and fixed)
-- `send_telegram.py` has the same guard for missing bot credentials
-- Hunter.io API calls use `timeout=10` and `resp.raise_for_status()` with a caught exception that returns a user-friendly error message
-- The RAG retrieval applies a cosine similarity threshold (0.35) to silently discard irrelevant chunks rather than passing noise to the LLM
-
-On the N8N side, the webhook flow handles errors by routing non-HOT leads away from Telegram and all sessions to Google Sheets regardless of score — so even failed classifications still get logged. The Switch node acts as a gatekeeper ensuring only valid scores trigger downstream notifications.
+Error handling is layered across Python and N8N — see the README for the full breakdown.
 
 ---
 

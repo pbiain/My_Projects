@@ -25,23 +25,21 @@ This agent automates the sales funnel:
 ## 🏗️ Architecture
 
 ```
-n8n Webhook → HTTP Request → Railway (server.py)
-                                           ↓
-                                    LangGraph Pipeline
-                                           ↓
-                              retrieve_context (Pinecone RAG)
-                                           ↓
-                              react_agent (gpt-4o-mini + DuckDuckGo + Hunter.io)
-                                           ↓
-                              classify_lead (HOT / WARM / COLD)
-                                           ↓
-                              send_telegram (HOT only) → Python
-                                           ↓
-                              send_gmail (WARM only) → Python
-                                           ↓
-                              assemble_output → JSON → n8n
-                                           ↓
-                              Google Sheets (ALL leads) → n8n
+User message → Railway (server.py / Flask)
+                        ↓
+               LangGraph — user-facing pipeline (fast, ~3.5s)
+                        ↓
+               retrieve_context (Pinecone RAG)
+                        ↓
+               react_agent (gpt-4o-mini + tools)
+                        ↓
+               assemble_output → JSON response to user
+                        ↓ (background thread, async)
+               classify_lead → HOT / WARM / COLD
+                        ↓
+               send_telegram (HOT) · send_gmail (WARM) · notify_n8n (ALL)
+                        ↓
+               Google Sheets (ALL leads) via n8n webhook
 ```
 
 ### Lead Routing Logic
@@ -257,6 +255,21 @@ Classification criteria:
 - **HOT** — specific budget mentioned, asks about payment plans with intent to buy, mentions investment ROI, ready to proceed
 - **WARM** — general interest, asking about prices or availability, building regulations, no urgency
 - **COLD** — just browsing, vague, hypothetical, no real intent signals
+
+### Error Handling
+
+Error handling is layered across the full stack to ensure the user always gets a response even when backend services fail:
+
+| Layer | Mechanism |
+|---|---|
+| Background thread | `classify_and_notify()` wrapped in `try/except Exception: pass` — classification failure never crashes the user response |
+| Gmail | Credentials guard: skips silently if `GMAIL_USER`/`GMAIL_PASS` not set. 5s SMTP timeout prevents gunicorn worker timeouts on Railway |
+| Telegram | Same credentials guard — skips if bot token/chat ID not configured |
+| Hunter.io | `timeout=10` + `resp.raise_for_status()` with caught exception returning a user-friendly error message |
+| Tavily search | `try/except` returning `([], error_string)` tuple — error surfaces to UI without crashing the server |
+| RAG retrieval | Cosine similarity threshold (0.35) discards low-relevance chunks silently — agent falls back to conversation history |
+| JSON parsing | `classify_lead.py` catches `json.JSONDecodeError` and defaults to `COLD` score — malformed LLM output never breaks the pipeline |
+| n8n | Switch node acts as gatekeeper — only valid HOT/WARM scores trigger downstream notifications; all sessions log to Sheets regardless |
 
 ---
 
