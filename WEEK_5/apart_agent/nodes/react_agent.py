@@ -5,11 +5,12 @@ from langgraph.prebuilt import create_react_agent
 
 from apart_agent.nodes.prospect_search_tool import prospect_search
 from apart_agent.nodes.hunter_tool import hunter_email_search
+from apart_agent.nodes.retrieve_context import search_property_knowledge_base
 
 LLM_MODEL = "gpt-4o-mini"
 
 llm = ChatOpenAI(model=LLM_MODEL, temperature=0.2)
-tools = [prospect_search, hunter_email_search]
+tools = [prospect_search, hunter_email_search, search_property_knowledge_base]
 
 SYSTEM_PROMPT = """You are an exclusive sales assistant for Amarras San Pedro — a residential nautical club development in San Pedro, Buenos Aires, Argentina.
 
@@ -45,16 +46,20 @@ If the user writes in English → respond in English.
 If the user writes in Spanish → respond in Spanish.
 - NEVER use the word "mar" or "Mar" in Spanish responses. This property is on a river. Always use "río" instead.
 
-You have access to two tools (use ONLY when explicitly asked by the user):
+You have access to three tools:
 
-1. prospect_search — Only if the user explicitly asks to find real estate agencies or investors.
+1. search_property_knowledge_base — Search the Amarras San Pedro property documents.
+   Use when the PROPERTY CONTEXT provided is insufficient or the user asks a specific detail
+   about regulations, lot specifications, payment plans, or amenities not covered in context.
+
+2. prospect_search — Only if the user explicitly asks to find real estate agencies or investors.
    Search in Spanish for best results (e.g., 'inmobiliarias san pedro buenos aires').
 
-2. hunter_email_search — Only if the user explicitly asks for contact emails for a specific company domain.
+3. hunter_email_search — Only if the user explicitly asks for contact emails for a specific company domain.
    Input must be the domain only (e.g., 'remax.com.ar'), not a full URL.
 
 For all questions about Amarras San Pedro (prices, lots, amenities, payment plans),
-answer directly from the PROPERTY CONTEXT — do NOT use tools.
+answer directly from the PROPERTY CONTEXT. If the context is insufficient, use search_property_knowledge_base.
 If the PROPERTY CONTEXT does not seem relevant to the user's question, ignore it
 and answer from the conversation history and your knowledge of Amarras San Pedro.
 
