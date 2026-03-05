@@ -9,17 +9,23 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --navy:    #0a0f2e;
-      --navy2:   #151c4a;
-      --gold:    #c9a84c;
-      --gold2:   #e8c96a;
-      --surface: rgba(255,255,255,0.97);
-      --border:  #e4e9f2;
-      --text:    #0f172a;
-      --muted:   #64748b;
-      --faint:   #f4f6fb;
-      --green:   #16a34a;
-      --red:     #dc2626;
+      /* From the logo */
+      --river:    #2272c3;   /* blue wave */
+      --river2:   #64b5e8;   /* lighter sky blue */
+      --forest:   #2d6e1e;   /* deep green */
+      --green:    #4aaa2e;   /* vivid nature green */
+      --green2:   #76c84a;   /* lighter green */
+      --sun:      #e8a820;   /* amber sun accent */
+      --dark:     #0e1f12;   /* deep forest dark */
+      --dark2:    #162e1a;   /* slightly lighter */
+
+      /* Surfaces */
+      --surface:  rgba(255,255,255,0.97);
+      --border:   #deebd6;   /* green-tinted border */
+      --faint:    #f2f8ee;   /* very light green tint */
+      --text:     #0e1f12;
+      --muted:    #5a7a52;
+      --red:      #dc2626;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -35,35 +41,34 @@
       content: '';
       position: fixed;
       inset: 0;
-      background: linear-gradient(160deg, rgba(10,15,46,0.72) 0%, rgba(10,15,46,0.55) 100%);
+      background: linear-gradient(160deg, rgba(14,31,18,0.72) 0%, rgba(10,22,30,0.58) 100%);
       z-index: 0;
       pointer-events: none;
     }
 
     /* ── HEADER ── */
     header {
-      background: rgba(10, 15, 46, 0.88);
+      background: rgba(14, 31, 18, 0.90);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       color: white;
       padding: 0 32px;
-      height: 62px;
+      height: 64px;
       display: flex;
       align-items: center;
-      gap: 16px;
-      border-bottom: 1px solid rgba(201,168,76,0.30);
+      gap: 14px;
+      border-bottom: 2px solid rgba(74,170,46,0.35);
       position: relative;
       z-index: 10;
     }
 
     .header-logo {
-      width: 36px; height: 36px;
-      background: linear-gradient(135deg, var(--gold), var(--gold2));
-      border-radius: 10px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
+      height: 40px;
+      width: 40px;
+      border-radius: 50%;
+      object-fit: cover;
       flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(201,168,76,0.35);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.40);
     }
 
     .header-text h1 {
@@ -72,35 +77,35 @@
       letter-spacing: -0.2px;
     }
     .header-text p {
-      font-size: 11px;
-      color: rgba(255,255,255,0.50);
+      font-size: 10.5px;
+      color: rgba(255,255,255,0.45);
       margin-top: 1px;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.5px;
       text-transform: uppercase;
     }
 
     .header-divider {
       width: 1px; height: 28px;
       background: rgba(255,255,255,0.15);
-      margin: 0 6px;
+      margin: 0 4px;
     }
 
     .header-badge {
       font-size: 11px;
       font-weight: 600;
-      color: var(--gold);
-      background: rgba(201,168,76,0.12);
-      border: 1px solid rgba(201,168,76,0.28);
+      color: var(--green2);
+      background: rgba(74,170,46,0.14);
+      border: 1px solid rgba(74,170,46,0.30);
       border-radius: 20px;
-      padding: 3px 11px;
+      padding: 3px 12px;
       letter-spacing: 0.3px;
     }
 
     .back-btn {
       margin-left: auto;
-      background: rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.18);
-      color: rgba(255,255,255,0.85);
+      color: rgba(255,255,255,0.82);
       border-radius: 20px;
       padding: 7px 18px;
       font-size: 12px;
@@ -112,11 +117,10 @@
       display: flex;
       align-items: center;
       gap: 7px;
-      letter-spacing: 0.1px;
     }
     .back-btn:hover {
-      background: rgba(255,255,255,0.16);
-      border-color: rgba(255,255,255,0.30);
+      background: rgba(74,170,46,0.18);
+      border-color: rgba(74,170,46,0.40);
       color: white;
     }
 
@@ -142,7 +146,7 @@
       -webkit-backdrop-filter: blur(16px);
       border-radius: 20px;
       padding: 28px;
-      box-shadow: 0 8px 40px rgba(10,15,46,0.22), 0 1px 0 rgba(255,255,255,0.6) inset;
+      box-shadow: 0 8px 40px rgba(14,31,18,0.20), 0 1px 0 rgba(255,255,255,0.7) inset;
       border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
@@ -159,12 +163,12 @@
 
     .panel-icon {
       width: 42px; height: 42px;
-      background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+      background: linear-gradient(135deg, var(--forest) 0%, var(--dark2) 100%);
       border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
       font-size: 19px;
       flex-shrink: 0;
-      box-shadow: 0 3px 10px rgba(10,15,46,0.25);
+      box-shadow: 0 3px 10px rgba(14,31,18,0.30);
     }
 
     .panel-title h2 {
@@ -202,14 +206,14 @@
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      color: var(--muted);
+      color: var(--forest);
       transition: all 0.18s;
       font-family: inherit;
     }
     .chip:hover {
-      background: var(--navy);
-      color: var(--gold);
-      border-color: var(--navy);
+      background: var(--forest);
+      color: var(--green2);
+      border-color: var(--forest);
     }
 
     /* ── INPUT ── */
@@ -235,13 +239,13 @@
       color: var(--text);
     }
     .input-row textarea:focus {
-      border-color: var(--gold);
-      box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+      border-color: var(--river);
+      box-shadow: 0 0 0 3px rgba(34,114,195,0.10);
     }
-    .input-row textarea::placeholder { color: #b0bac9; }
+    .input-row textarea::placeholder { color: #b0c4a8; }
 
     .btn {
-      background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+      background: linear-gradient(135deg, var(--forest) 0%, var(--dark2) 100%);
       color: white;
       border: none;
       border-radius: 12px;
@@ -253,11 +257,11 @@
       flex-shrink: 0;
       transition: all 0.2s;
       white-space: nowrap;
-      box-shadow: 0 3px 10px rgba(10,15,46,0.25);
+      box-shadow: 0 3px 10px rgba(14,31,18,0.30);
       letter-spacing: 0.1px;
     }
-    .btn:hover    { background: linear-gradient(135deg, var(--navy2) 0%, #1e2870 100%); box-shadow: 0 4px 16px rgba(10,15,46,0.35); }
-    .btn:disabled { background: #cbd5e1; box-shadow: none; cursor: not-allowed; }
+    .btn:hover    { background: linear-gradient(135deg, var(--green) 0%, var(--forest) 100%); box-shadow: 0 4px 16px rgba(74,170,46,0.30); }
+    .btn:disabled { background: #c8d8c0; box-shadow: none; cursor: not-allowed; }
 
     /* ── LOADING ── */
     .loading {
@@ -272,7 +276,7 @@
     .spinner {
       width: 16px; height: 16px;
       border: 2px solid var(--border);
-      border-top-color: var(--gold);
+      border-top-color: var(--river);
       border-radius: 50%;
       animation: spin 0.75s linear infinite;
       flex-shrink: 0;
@@ -282,7 +286,7 @@
     /* ── EMPTY STATE ── */
     .empty {
       text-align: center;
-      color: #b0bac9;
+      color: #8faa82;
       font-size: 13px;
       padding: 36px 0;
       line-height: 1.7;
@@ -336,13 +340,13 @@
       transition: all 0.18s;
     }
     .contact-card:hover {
-      border-color: var(--gold);
-      box-shadow: 0 3px 12px rgba(201,168,76,0.12);
+      border-color: var(--river);
+      box-shadow: 0 3px 14px rgba(34,114,195,0.12);
     }
 
     .card-avatar {
       width: 36px; height: 36px;
-      background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+      background: linear-gradient(135deg, var(--river) 0%, var(--river2) 100%);
       border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
       font-size: 16px;
@@ -366,9 +370,10 @@
       text-overflow: ellipsis;
     }
 
+    /* "Find Contacts" — river-to-sky blue gradient */
     .hunt-btn {
-      background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%);
-      color: var(--navy);
+      background: linear-gradient(135deg, var(--river) 0%, var(--river2) 100%);
+      color: white;
       border: none;
       border-radius: 8px;
       padding: 7px 13px;
@@ -380,18 +385,18 @@
       transition: all 0.18s;
       white-space: nowrap;
       letter-spacing: 0.1px;
-      box-shadow: 0 2px 6px rgba(201,168,76,0.30);
+      box-shadow: 0 2px 8px rgba(34,114,195,0.30);
     }
     .hunt-btn:hover {
-      background: linear-gradient(135deg, var(--gold2) 0%, var(--gold) 100%);
-      box-shadow: 0 3px 10px rgba(201,168,76,0.45);
+      background: linear-gradient(135deg, var(--river2) 0%, var(--river) 100%);
+      box-shadow: 0 4px 14px rgba(34,114,195,0.42);
       transform: translateY(-1px);
     }
 
     .no-results {
       display: none;
       text-align: center;
-      color: #b0bac9;
+      color: #8faa82;
       font-size: 13px;
       padding: 30px 0;
       line-height: 1.7;
@@ -459,7 +464,7 @@
       white-space: nowrap;
     }
     tbody tr:last-child td { border-bottom: none; }
-    tbody tr:hover td { background: #f8faff; }
+    tbody tr:hover td { background: #f5fbf2; }
 
     .badge {
       display: inline-block;
@@ -474,17 +479,17 @@
     .lo  { background: #fee2e2; color: #dc2626; }
 
     .email-link {
-      color: var(--navy2);
+      color: var(--river);
       text-decoration: none;
       font-weight: 500;
     }
-    .email-link:hover { color: var(--gold); text-decoration: underline; }
+    .email-link:hover { color: var(--forest); text-decoration: underline; }
 
     /* ── LOGGED MSG ── */
     .logged-msg {
       display: none;
       font-size: 12px;
-      color: var(--green);
+      color: var(--forest);
       font-weight: 600;
       align-items: center;
       gap: 6px;
@@ -508,10 +513,10 @@
 <body>
 
 <header>
-  <div class="header-logo">⚓</div>
+  <img src="/static/logo.jpg" class="header-logo" alt="Amarras San Pedro" />
   <div class="header-text">
-    <h1>Prospect Research</h1>
-    <p>Amarras San Pedro</p>
+    <h1>Amarras San Pedro</h1>
+    <p>Prospect Research</p>
   </div>
   <div class="header-divider"></div>
   <span class="header-badge">Outbound Intelligence</span>
@@ -547,7 +552,7 @@
     <div class="error-msg" id="search-err"></div>
 
     <div class="empty" id="search-empty">
-      <div class="empty-icon">🌐</div>
+      <div class="empty-icon">🌿</div>
       Select a quick search above or enter a custom query
     </div>
 
@@ -560,7 +565,7 @@
     </div>
   </div>
 
-  <!-- RIGHT: Email Finder -->
+  <!-- RIGHT: Contact Finder -->
   <div class="panel">
     <div class="panel-header">
       <div class="panel-icon">✉️</div>
@@ -574,8 +579,8 @@
     <div class="error-msg" id="email-err"></div>
 
     <div class="empty" id="email-empty">
-      <div class="empty-icon">✉️</div>
-      Click <strong style="color:var(--navy)">Find Contacts →</strong> on any result<br>to look up emails and phone numbers
+      <div class="empty-icon">💧</div>
+      Click <strong style="color:var(--river)">Find Contacts →</strong> on any result<br>to look up emails and phone numbers
     </div>
 
     <div class="org-label" id="org-label"></div>
@@ -599,7 +604,7 @@
     </div>
 
     <div class="logged-msg" id="logged-msg">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="#dcfce7"/><path d="M4 7l2 2 4-4" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="7.5" fill="#dcfce7"/><path d="M4.5 7.5l2.2 2.2 4-4" stroke="#2d6e1e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Contacts logged to Google Sheets
     </div>
   </div>
@@ -730,7 +735,7 @@
             <td>${c.name}</td>
             <td style="color:var(--muted)">${c.position}</td>
             <td><a class="email-link" href="mailto:${c.email}">${c.email}</a></td>
-            <td>${c.phone ? `<a class="email-link" href="tel:${c.phone}">${c.phone}</a>` : '<span style="color:#cbd5e1">—</span>'}</td>
+            <td>${c.phone ? `<a class="email-link" href="tel:${c.phone}">${c.phone}</a>` : '<span style="color:#c8d8c0">—</span>'}</td>
             <td><span class="badge ${cls}">${conf}%</span></td>
           `;
           tbody.appendChild(tr);
