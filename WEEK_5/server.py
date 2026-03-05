@@ -17,10 +17,14 @@ _SKIP = {
 }
 
 
-def _search_contacts(query: str) -> list:
-    """Search with Tavily and extract {company, domain} from structured results."""
+def _search_contacts(query: str):
+    """Search with Tavily and extract {company, domain} from structured results.
+    Returns (contacts_list, error_string) — error is None on success."""
+    api_key = os.getenv("TAVILY_API_KEY")
+    if not api_key:
+        return [], "TAVILY_API_KEY not set in environment"
     try:
-        client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+        client = TavilyClient(api_key=api_key)
         response = client.search(query, max_results=8)
         contacts = []
         seen = set()
@@ -39,9 +43,9 @@ def _search_contacts(query: str) -> list:
             if len(company) > 60:
                 company = company[:60]
             contacts.append({"company": company, "domain": domain})
-        return contacts
-    except Exception:
-        return []
+        return contacts, None
+    except Exception as e:
+        return [], str(e)
 
 from apart_agent.graph import build_graph
 from apart_agent.notify import notify_n8n
@@ -121,9 +125,9 @@ def run_outbound():
     else:
         enhanced_query = query
 
-    contacts = _search_contacts(enhanced_query)
-    if contacts is None:
-        return jsonify({"error": "Search failed, please try again"}), 500
+    contacts, err = _search_contacts(enhanced_query)
+    if err:
+        return jsonify({"error": f"Search error: {err}"}), 500
 
     # Log ONLY contacts with a domain or email (actionable for outreach)
     for c in contacts:
