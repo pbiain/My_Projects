@@ -1,61 +1,46 @@
 import os
-import json
 import threading
 import requests as http
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify, send_from_directory
 from dotenv import load_dotenv
-from langchain_community.tools import DuckDuckGoSearchRun
-from openai import OpenAI as _OpenAI
-
-_ddg = DuckDuckGoSearchRun()
+from langchain_community.tools.tavily_search import TavilySearchResults
 
 load_dotenv()
 
-_oai = _OpenAI()  # uses OPENAI_API_KEY from env
+_tavily = TavilySearchResults(max_results=8)
+
+# Domains to skip — portals, social media, news sites
+_SKIP = {
+    "wikipedia.org", "facebook.com", "instagram.com", "twitter.com",
+    "youtube.com", "linkedin.com", "mercadolibre.com.ar", "zonaprop.com.ar",
+    "argenprop.com", "properati.com.ar", "infobae.com", "clarin.com",
+    "lanacion.com.ar", "cronista.com", "eldestape.com", "ambito.com",
+}
 
 
-def _parse_ddg_contacts(raw: str) -> list:
-    """Use GPT-4o-mini to extract structured contacts from DuckDuckGo raw text."""
+def _search_contacts(query: str) -> list:
+    """Search with Tavily and extract {company, domain} from structured results."""
     try:
-        resp = _oai.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0,
-            max_tokens=1000,
-            messages=[{
-                "role": "user",
-                "content": (
-                    "Extract real estate company leads from this web search result.\n"
-                    "Return ONLY a raw JSON array (no markdown, no code fences).\n"
-                    "Each object may have these fields (omit fields not found):\n"
-                    "  company (string, SHORT name max 5 words), domain (string), email (string), name (string)\n"
-                    "Rules:\n"
-                    "- domain must be clean: e.g. remax.com.ar — no http://, no paths, no query strings\n"
-                    "- 'company' must be a real business name, NOT a sentence or description\n"
-                    "- Include ONLY entries that have at least a domain or email\n"
-                    "- Skip generic articles, FAQs, blog posts, Wikipedia, or entries with no contact info\n"
-                    "- If same company appears multiple times, merge into one entry\n"
-                    "- Return [] if nothing useful found\n\n"
-                    f"Search results:\n{raw}\n\n"
-                    "Output raw JSON array only."
-                ),
-            }],
-        )
-        content = resp.choices[0].message.content.strip()
-        # Strip markdown code fences if GPT wraps the JSON
-        if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        parsed = json.loads(content.strip())
-        # Filter: must have domain or email; company name must be short
-        result = []
-        for c in parsed if isinstance(parsed, list) else []:
-            if not (c.get("domain") or c.get("email")):
+        results = _tavily.invoke({"query": query})
+        contacts = []
+        seen = set()
+        for r in results:
+            url = r.get("url", "")
+            title = r.get("title", "")
+            if not url:
                 continue
-            if c.get("company") and len(c["company"]) > 80:
-                c["company"] = c["company"][:80]
-            result.append(c)
-        return result
+            domain = urlparse(url).netloc.replace("www.", "").strip()
+            if not domain or domain in seen:
+                continue
+            if any(s in domain for s in _SKIP):
+                continue
+            seen.add(domain)
+            company = title.split(" - ")[0].split(" | ")[0].split(" – ")[0].strip()
+            if len(company) > 60:
+                company = company[:60]
+            contacts.append({"company": company, "domain": domain})
+        return contacts
     except Exception:
         return []
 
@@ -137,13 +122,9 @@ def run_outbound():
     else:
         enhanced_query = query
 
-    try:
-        raw = _ddg.run(enhanced_query)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-    # Parse raw text into structured contacts via GPT
-    contacts = _parse_ddg_contacts(raw)
+    contacts = _search_contacts(enhanced_query)
+    if contacts is None:
+        return jsonify({"error": "Search failed, please try again"}), 500
 
     # Log ONLY contacts with a domain or email (actionable for outreach)
     for c in contacts:

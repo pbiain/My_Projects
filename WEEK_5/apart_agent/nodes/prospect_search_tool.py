@@ -1,7 +1,7 @@
-from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain.tools import tool
 
-_ddg = DuckDuckGoSearchRun()
+_tavily = TavilySearchResults(max_results=5)
 
 
 @tool
@@ -15,4 +15,13 @@ def prospect_search(query: str) -> str:
               'real estate agencies san pedro buenos aires email'.
     Returns names, websites, and contact details found on the web."""
 
-    return _ddg.run(query)
+    results = _tavily.invoke({"query": query})
+    if not results:
+        return "No results found."
+    lines = []
+    for r in results:
+        title = r.get("title", "")
+        url = r.get("url", "")
+        snippet = r.get("content", "")[:200]
+        lines.append(f"- {title}\n  {url}\n  {snippet}")
+    return "\n\n".join(lines)
