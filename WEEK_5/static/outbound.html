@@ -62,7 +62,7 @@
       z-index: 1;
       display: flex;
       gap: 20px;
-      max-width: 1180px;
+      max-width: 1400px;
       margin: 28px auto;
       padding: 0 20px 40px;
       flex-wrap: wrap;
@@ -315,21 +315,31 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      font-size: 12px;
+      table-layout: fixed;
     }
+    table colgroup col:nth-child(1) { width: 18%; }
+    table colgroup col:nth-child(2) { width: 20%; }
+    table colgroup col:nth-child(3) { width: 34%; }
+    table colgroup col:nth-child(4) { width: 16%; }
+    table colgroup col:nth-child(5) { width: 12%; }
     thead th {
       background: #f1f5f9;
-      padding: 10px 14px;
+      padding: 8px 10px;
       text-align: left;
       font-weight: 600;
       color: #475569;
       border-bottom: 2px solid #e2e8f0;
       white-space: nowrap;
+      overflow: hidden;
     }
     tbody td {
-      padding: 10px 14px;
+      padding: 8px 10px;
       border-bottom: 1px solid #f1f5f9;
       vertical-align: middle;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     tbody tr:last-child td { border-bottom: none; }
     tbody tr:hover td { background: #f8fafc; }
@@ -454,6 +464,9 @@
 
     <div class="table-wrap" id="table-wrap">
       <table>
+        <colgroup>
+          <col/><col/><col/><col/><col/>
+        </colgroup>
         <thead>
           <tr>
             <th>Name</th>
