@@ -508,6 +508,17 @@
       line-height: 1.5;
     }
     .error-msg.show { display: block; }
+  @media print {
+    header, .search-card, .contacts-grid, #export-bar, body::before { display: none !important; }
+    body { background: white !important; }
+    main { padding: 0 !important; }
+    .email-section { box-shadow: none !important; border: 1px solid #ccc !important; }
+    #print-header { display: block !important; }
+  }
+  #print-header {
+    display: none;
+    margin-bottom: 20px;
+  }
   </style>
 </head>
 <body>
@@ -575,6 +586,11 @@
       </div>
     </div>
 
+    <div id="print-header">
+      <h2 style="font-size:20px;color:#0e1f12;margin-bottom:4px;">Prospect Intelligence Report</h2>
+      <p id="print-meta" style="font-size:12px;color:#5a7a52;margin-bottom:16px;"></p>
+    </div>
+
     <div class="loading" id="email-load"><div class="spinner"></div> Looking up contacts via Hunter.io…</div>
     <div class="error-msg" id="email-err"></div>
 
@@ -607,11 +623,27 @@
       <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="7.5" fill="#dcfce7"/><path d="M4.5 7.5l2.2 2.2 4-4" stroke="#2d6e1e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Contacts logged to Google Sheets
     </div>
+
+    <div id="export-bar" style="display:none;margin-top:16px;text-align:right;">
+      <button onclick="exportReport()" style="padding:9px 20px;background:linear-gradient(135deg,var(--forest),var(--green));color:white;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.2px;">
+        ⬇ Export Report
+      </button>
+    </div>
   </div>
 
 </main>
 
 <script>
+  let lastQuery = '';
+  let lastOrg = '';
+
+  function exportReport() {
+    const now = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    document.getElementById('print-meta').textContent =
+      `Company: ${lastOrg || '—'}  ·  Query: "${lastQuery || '—'}"  ·  Generated: ${now}  ·  Amarras San Pedro`;
+    window.print();
+  }
+
   function useQuery(q) {
     document.getElementById('search-q').value = q;
     autoResize(document.getElementById('search-q'));
@@ -658,6 +690,7 @@
         document.getElementById('search-err').textContent = data.error;
         document.getElementById('search-err').classList.add('show');
       } else {
+        lastQuery = data.query_used || query;
         if (data.query_used && data.query_used !== query) {
           document.getElementById('query-used').textContent = data.query_used;
           document.getElementById('query-tag').classList.add('show');
@@ -722,8 +755,10 @@
         document.getElementById('email-err').textContent = data.error;
         document.getElementById('email-err').classList.add('show');
       } else {
+        lastOrg = data.organization || data.domain;
         document.getElementById('org-label').textContent = `${data.organization}  ·  ${data.domain}`;
         document.getElementById('org-label').style.display = 'block';
+        document.getElementById('export-bar').style.display = 'block';
 
         const tbody = document.getElementById('email-rows');
         tbody.innerHTML = '';
