@@ -442,17 +442,12 @@
       </div>
     </div>
 
-    <div class="input-row">
-      <input type="text" id="domain-in" placeholder="e.g. remax.com.ar" />
-      <button class="btn" id="email-btn" onclick="findEmails()">Find</button>
-    </div>
-
     <div class="loading" id="email-load"><div class="spinner"></div> Looking up contacts via Hunter.io...</div>
     <div class="error-msg" id="email-err"></div>
 
     <div class="empty" id="email-empty">
       <div class="empty-icon">✉️</div>
-      Enter a company domain to find verified contacts
+      Click "Find Contacts →" on any result to look up emails
     </div>
 
     <div class="org-label" id="org-label"></div>
@@ -497,9 +492,8 @@
   });
 
   function autoHunt(domain) {
-    document.getElementById('domain-in').value = domain;
-    findEmails();
-    document.getElementById('domain-in').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    findEmails(domain);
+    document.getElementById('email-load').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   async function runSearch() {
@@ -571,12 +565,8 @@
     btn.disabled = false;
   }
 
-  async function findEmails() {
-    const domain = document.getElementById('domain-in').value.trim();
+  async function findEmails(domain) {
     if (!domain) return;
-
-    const btn = document.getElementById('email-btn');
-    btn.disabled = true;
     document.getElementById('email-load').classList.add('show');
     document.getElementById('email-empty').style.display = 'none';
     document.getElementById('table-wrap').classList.remove('show');
@@ -623,7 +613,6 @@
     }
 
     document.getElementById('email-load').classList.remove('show');
-    btn.disabled = false;
   }
 </script>
 
