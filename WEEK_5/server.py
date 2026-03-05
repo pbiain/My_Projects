@@ -4,11 +4,9 @@ import requests as http
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify, send_from_directory
 from dotenv import load_dotenv
-from langchain_community.tools.tavily_search import TavilySearchResults
+from tavily import TavilyClient
 
 load_dotenv()
-
-_tavily = TavilySearchResults(max_results=8)
 
 # Domains to skip — portals, social media, news sites
 _SKIP = {
@@ -22,10 +20,11 @@ _SKIP = {
 def _search_contacts(query: str) -> list:
     """Search with Tavily and extract {company, domain} from structured results."""
     try:
-        results = _tavily.invoke({"query": query})
+        client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+        response = client.search(query, max_results=8)
         contacts = []
         seen = set()
-        for r in results:
+        for r in response.get("results", []):
             url = r.get("url", "")
             title = r.get("title", "")
             if not url:
