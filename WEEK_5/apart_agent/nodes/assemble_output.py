@@ -16,6 +16,6 @@ def assemble_output(state):
         "chat_history":     updated_history,
         "send_telegram":    score == "HOT",
         "send_email":       score == "WARM",
-        "log_to_sheets":    True,
+        "log_to_sheets":    score in ("HOT", "WARM"),
     }
     return state

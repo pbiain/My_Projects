@@ -56,28 +56,36 @@ graph = build_graph()
 
 # Strong buying intent — classify sync so CTA button appears in response
 STRONG_HOT_KEYWORDS = {
+    # Purchase / contact intent
     "comprar", "interesado", "me interesa", "quiero", "quisiera", "lo compro",
     "llamar", "llamame", "llámame", "agente", "asesor", "contactar", "contacto",
     "teléfono", "telefono", "whatsapp", "hablar", "habla",
     "buy", "interested", "i want", "i'd like to buy", "i'll take", "purchase",
     "agent", "call", "phone", "talk", "speak", "contact", "advisor", "reach",
+    # Visit intent — wanting to see the property = strong buying signal
+    "ver", "verlo", "visitar", "puedo ver", "quiero ver",
+    "see", "see it", "visit", "show me", "can i see",
+    # Payment plan inquiry — asking about financing = ready-to-buy signal
+    "pago", "cuota", "financ", "plan de pago", "formas de pago",
+    "payment", "payment plan", "installment", "financing", "finance",
 }
 
 # Softer signals — classify async (no CTA needed, just logging/notifications)
 SOFT_KEYWORDS = {
-    "precio", "lote", "visitar", "pago", "cuota", "financ",
-    "price", "lot", "visit", "invest", "payment", "budget",
+    "precio", "lote", "invest", "price", "lot", "budget",
 }
 
 
 def classify_and_notify(state):
     """Runs in a background thread — classifies the lead and sends notifications.
 
-    HOT  → Telegram alert to owner + log to Google Sheets
+    Called ONLY for the SOFT async path (score not in response, frontend can't log).
+    HOT  → Telegram alert + Google Sheets log (backend is sole logger for this path)
            Criteria: specific budget, payment plan intent, mentions ROI, ready to buy
-    WARM → Gmail notification to owner + log to Google Sheets
+    WARM → Gmail alert + Google Sheets log (backend is sole logger for this path)
            Criteria: asking about prices/availability, building regs, general interest
-    COLD → no action, no logging (session end handled by /log-session if score warrants it)
+    COLD → no action, no logging
+    Note: STRONG_HOT path uses _notify_sync — frontend handles Sheets there via /log-session
     """
     try:
         state = classify_lead(state)
@@ -139,14 +147,14 @@ def run_agent():
         output["score"] = state["lead_score"]
         output["score_reason"] = state["score_reason"]
         def _notify_sync(s, o):
+            # Score is already in the frontend response — frontend logs to Sheets via /log-session
+            # Backend only handles real-time alerts here (no notify_n8n to avoid double-log)
             score = s["lead_score"]
             if score == "HOT":
-                send_telegram(s)
-                notify_n8n(o)           # HOT: Telegram + Google Sheets log
+                send_telegram(s)        # HOT: Telegram alert only — Sheets logged by frontend CTA click
             elif score == "WARM":
-                send_gmail(s)
-                notify_n8n(o)           # WARM: Gmail + Google Sheets log
-            # COLD: no notification, no Sheets log
+                send_gmail(s)           # WARM: Gmail alert only — Sheets logged by frontend inactivity
+            # COLD: no action
         threading.Thread(target=_notify_sync, args=(state, output), daemon=True).start()
     elif is_soft:
         # Async: buying signal detected — classify + notify in background

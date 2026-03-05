@@ -487,6 +487,7 @@
 
     let chatHistory = [];
     let sessionData = {};
+    let sessionLogged = false;   // never resets per turn — prevents duplicate Sheets rows
     let inactivityTimer = null;
     const INACTIVITY_MS = 3 * 60 * 1000;
     let selectedLang = 'en';
@@ -507,8 +508,8 @@
     }
 
     async function logSession(trigger) {
-      if (!sessionData.score || sessionData.logged) return;
-      sessionData.logged = true;
+      if (!sessionData.score || sessionLogged) return;
+      sessionLogged = true;
       try {
         await fetch('/log-session', {
           method: 'POST',
@@ -608,7 +609,6 @@
           score: score,
           score_reason: data.score_reason || '',
           original_message: text,
-          logged: false,
         };
 
         resetInactivityTimer();
