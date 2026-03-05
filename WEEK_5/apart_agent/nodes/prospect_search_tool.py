@@ -1,7 +1,6 @@
-from langchain_community.tools.tavily_search import TavilySearchResults
+import os
+from tavily import TavilyClient
 from langchain.tools import tool
-
-_tavily = TavilySearchResults(max_results=5)
 
 
 @tool
@@ -15,7 +14,9 @@ def prospect_search(query: str) -> str:
               'real estate agencies san pedro buenos aires email'.
     Returns names, websites, and contact details found on the web."""
 
-    results = _tavily.invoke({"query": query})
+    client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+    response = client.search(query, max_results=5)
+    results = response.get("results", [])
     if not results:
         return "No results found."
     lines = []
