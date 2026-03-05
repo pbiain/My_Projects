@@ -3,7 +3,7 @@
 > Autonomous AI agent that qualifies inbound real estate leads, answers buyer questions from property documents, and routes notifications — without human intervention.
 
 **Author:** Pedro Biain | **IronHack AI Bootcamp** | **Week 5 — Module 3**
-**Stack:** Python 3.12 · LangGraph · LangChain · Pinecone · Flask · Railway · n8n · OpenAI · DuckDuckGo · Hunter.io · Telegram · Gmail · Google Sheets
+**Stack:** Python 3.12 · LangGraph · LangChain · Pinecone · Flask · Railway · n8n · OpenAI · Tavily · Hunter.io · Telegram · Gmail · Google Sheets
 
 ---
 
@@ -62,10 +62,11 @@ WEEK_5/
 │   ├── graph.py                  # LangGraph pipeline builder
 │   └── nodes/
 │       ├── __init__.py
-│       ├── retrieve_context.py   # Pinecone RAG retrieval
-│       ├── react_agent.py        # ReAct agent (gpt-4o-mini + DuckDuckGo + Hunter.io)
-│       ├── prospect_search_tool.py  # DuckDuckGo web search tool
-│       ├── hunter_tool.py        # Hunter.io email finder tool
+│       ├── retrieve_context.py   # Pinecone RAG retrieval + search_property_knowledge_base tool
+│       ├── react_agent.py        # ReAct agent (gpt-4o-mini + 2 tools)
+│       ├── web_search_tool.py    # Tavily web search tool (location / distance queries)
+│       ├── prospect_search_tool.py  # Tavily outbound prospect search (server.py only)
+│       ├── hunter_tool.py        # Hunter.io email finder (server.py only)
 │       ├── classify_lead.py      # HOT/WARM/COLD classifier
 │       ├── assemble_output.py    # JSON output builder
 │       ├── send_telegram.py      # Telegram Bot API (HOT)
@@ -171,19 +172,19 @@ Invoke-RestMethod -Uri "https://YOUR-N8N-WEBHOOK-URL/webhook/apart-agent" -Metho
 The ReAct (Reasoning + Acting) pattern is implemented inside `react_agent.py` using LangChain's `create_react_agent`. The agent:
 
 1. **Reasons** — reads the retrieved property context and the lead's question
-2. **Acts** — decides whether to call DuckDuckGo (market research) or Hunter.io (email lookup)
+2. **Acts** — calls one of two tools when needed: `search_property_knowledge_base` (Pinecone RAG) for property-specific details, or `property_web_search` (Tavily) for location/distance/access questions not covered in the documents
 3. **Observes** — incorporates tool results into its reasoning
-4. **Answers** — produces a grounded final answer from real documents
+4. **Answers** — produces a grounded final answer, always framed around Amarras San Pedro
 
 ### LangGraph State Machine
 
-State flows linearly through 6 nodes:
+State flows linearly through 3 user-facing nodes:
 
 ```
-retrieve_context → react_agent → classify_lead → send_telegram → send_gmail → assemble_output
+retrieve_context → react_agent → assemble_output
 ```
 
-Each node receives and returns the full `AgentState` TypedDict. Notification filtering is handled inside each node (not via conditional edges), making the graph simple and deterministic.
+Classification and notifications run in a background thread after the response is returned to the user — decoupled from the user-facing pipeline for performance. Each node receives and returns the full `AgentState` TypedDict.
 
 ### RAG System
 
@@ -265,8 +266,8 @@ Error handling is layered across the full stack to ensure the user always gets a
 | Background thread | `classify_and_notify()` wrapped in `try/except Exception: pass` — classification failure never crashes the user response |
 | Gmail | Credentials guard: skips silently if `GMAIL_USER`/`GMAIL_PASS` not set. 5s SMTP timeout prevents gunicorn worker timeouts on Railway |
 | Telegram | Same credentials guard — skips if bot token/chat ID not configured |
-| Hunter.io | `timeout=10` + `resp.raise_for_status()` with caught exception returning a user-friendly error message |
-| Tavily search | `try/except` returning `([], error_string)` tuple — error surfaces to UI without crashing the server |
+| Hunter.io | `timeout=10` + `resp.raise_for_status()` with caught exception returning a user-friendly error message (outbound only, called from `server.py`) |
+| Tavily web search | `try/except` in `web_search_tool.py` returns a fallback string — error never reaches the user as a crash |
 | RAG retrieval | Cosine similarity threshold (0.35) discards low-relevance chunks silently — agent falls back to conversation history |
 | JSON parsing | `classify_lead.py` catches `json.JSONDecodeError` and defaults to `COLD` score — malformed LLM output never breaks the pipeline |
 | n8n | Switch node acts as gatekeeper — only valid HOT/WARM scores trigger downstream notifications; all sessions log to Sheets regardless |
@@ -279,8 +280,8 @@ Error handling is layered across the full stack to ensure the user always gets a
 |------|-------------|---------|
 | **OpenAI** | LangChain (`gpt-4o-mini`, `text-embedding-3-large`) | LLM reasoning + embeddings |
 | **Pinecone** | `langchain_pinecone.PineconeVectorStore` | Vector search over property docs |
-| **DuckDuckGo** | LangChain `DuckDuckGoSearchRun` tool | Real estate agency & lead prospect search |
-| **Hunter.io** | `hunter_tool.py` via REST API | Email finder for outbound prospecting |
+| **Tavily** | `TavilyClient` REST API (`web_search_tool.py` + `prospect_search_tool.py`) | Inbound: location/distance queries. Outbound: real estate agency prospect search |
+| **Hunter.io** | `hunter_tool.py` via REST API | Email finder for outbound prospecting (called from `server.py`, not the ReAct agent) |
 | **Telegram Bot API** | `requests` (direct HTTP) | HOT lead alerts to owner |
 | **Gmail** | `smtplib` SMTP SSL | WARM lead HTML email notifications |
 | **Google Sheets** | n8n `Append row in sheet` node | Full lead logging with timestamps |
@@ -291,8 +292,13 @@ Error handling is layered across the full stack to ensure the user always gets a
 
 ### Tool Integration Strategy
 
-**LangChain tool interface (DuckDuckGo + Hunter.io)**
-DuckDuckGo and Hunter.io are integrated via LangChain's `@tool` decorator, allowing the ReAct agent to autonomously decide when to search for real estate agencies or find professional email contacts.
+**LangChain tool interface — inbound agent (2 tools)**
+The ReAct inbound agent has access to two `@tool` functions:
+- `search_property_knowledge_base` — wraps Pinecone vector search; used when the RAG context provided by `retrieve_context.py` is insufficient for specific lot/regulation/payment questions.
+- `property_web_search` — wraps Tavily; used for geographic/logistical questions not in the property documents (e.g. distances, access routes, local amenities).
+
+**Outbound tools (server.py only, bypass the ReAct agent)**
+`prospect_search_tool.py` (Tavily) and `hunter_tool.py` (Hunter.io) are called directly from `server.py` when the user clicks the outbound prospect or email-finder buttons. They are not available to the inbound ReAct agent — keeping the inbound chatbot strictly focused on selling Amarras San Pedro.
 
 **Direct Python integration (Telegram & Gmail)**  
 Telegram and Gmail are implemented as deterministic LangGraph nodes rather than LLM-controlled tools. This was a deliberate architectural choice: notifications should always fire based on hard rules (HOT → Telegram, WARM → Gmail), not probabilistic LLM reasoning. Deterministic behavior is more reliable in a production notification system.
@@ -341,7 +347,7 @@ pinecone-client
 flask
 python-dotenv
 requests
-ddgs
+tavily-python
 hunter-python
 ```
 

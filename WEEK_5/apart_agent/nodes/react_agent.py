@@ -3,14 +3,13 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.prebuilt import create_react_agent
 
-from apart_agent.nodes.prospect_search_tool import prospect_search
-from apart_agent.nodes.hunter_tool import hunter_email_search
 from apart_agent.nodes.retrieve_context import search_property_knowledge_base
+from apart_agent.nodes.web_search_tool import property_web_search
 
 LLM_MODEL = "gpt-4o-mini"
 
 llm = ChatOpenAI(model=LLM_MODEL, temperature=0.2)
-tools = [prospect_search, hunter_email_search, search_property_knowledge_base]
+tools = [search_property_knowledge_base, property_web_search]
 
 SYSTEM_PROMPT = """You are an exclusive sales assistant for Amarras San Pedro — a residential nautical club development in San Pedro, Buenos Aires, Argentina.
 
@@ -46,22 +45,21 @@ If the user writes in English → respond in English.
 If the user writes in Spanish → respond in Spanish.
 - NEVER use the word "mar" or "Mar" in Spanish responses. This property is on a river. Always use "río" instead.
 
-You have access to three tools:
+You have access to two tools:
 
 1. search_property_knowledge_base — Search the Amarras San Pedro property documents.
    Use when the PROPERTY CONTEXT provided is insufficient or the user asks a specific detail
    about regulations, lot specifications, payment plans, or amenities not covered in context.
 
-2. prospect_search — Only if the user explicitly asks to find real estate agencies or investors.
-   Search in Spanish for best results (e.g., 'inmobiliarias san pedro buenos aires').
-
-3. hunter_email_search — Only if the user explicitly asks for contact emails for a specific company domain.
-   Input must be the domain only (e.g., 'remax.com.ar'), not a full URL.
+2. property_web_search — Search the web for general information NOT in the property documents.
+   Use for questions about location, distances, how to get there, nearby cities, local amenities,
+   or anything geographic/logistical (e.g. "how far from Buenos Aires?", "how do I get there?").
+   Always frame results in the context of Amarras San Pedro's advantages.
 
 For all questions about Amarras San Pedro (prices, lots, amenities, payment plans),
 answer directly from the PROPERTY CONTEXT. If the context is insufficient, use search_property_knowledge_base.
-If the PROPERTY CONTEXT does not seem relevant to the user's question, ignore it
-and answer from the conversation history and your knowledge of Amarras San Pedro.
+For location or distance questions, use property_web_search.
+If neither tool is needed, answer from the conversation history and your knowledge of Amarras San Pedro.
 
 Keep your tone warm and conversational. Do NOT write "Final Answer." as a literal phrase."""
 
@@ -76,19 +74,10 @@ def react_agent(state):
         messages.append(HumanMessage(content=turn["user"]))
         messages.append(AIMessage(content=turn["assistant"]))
 
-    # Determine language: use frontend flag if set, otherwise auto-detect
+    # Language set by frontend picker overlay (always 'en' or 'es'); default English for CLI
     user_msg = state['user_message']
-    forced_lang = state.get("language", "")
-    if forced_lang == "es":
-        is_spanish = True
-    elif forced_lang == "en":
-        is_spanish = False
-    else:
-        spanish_chars = set("áéíóúüñÁÉÍÓÚÜÑ¿¡")
-        spanish_words = {"el", "la", "los", "las", "de", "que", "en", "es", "me", "mi", "un", "una", "por", "con", "del", "al", "se", "no", "para", "como", "más", "pero", "su", "sus", "hay", "estoy", "quiero", "tengo", "puedo", "hola", "buenas", "buenos", "gracias", "lotes", "lote", "precio", "precios", "cuanto", "cuánto", "quisiera", "saber", "información", "informacion", "disponible", "disponibles", "pago", "pagos", "cuotas"}
-        words_lower = set(user_msg.lower().split())
-        is_spanish = bool(set(user_msg) & spanish_chars) or len(words_lower & spanish_words) >= 1
-    lang_instruction = "RESPOND IN SPANISH. Be concise — 2-3 sentences max." if is_spanish else "RESPOND IN ENGLISH ONLY. Be concise — 2-3 sentences max."
+    lang = state.get("language", "en")
+    lang_instruction = "RESPOND IN SPANISH. Be concise — 2-3 sentences max." if lang == "es" else "RESPOND IN ENGLISH ONLY. Be concise — 2-3 sentences max."
 
     full_input = f"{lang_instruction}\n\nPROPERTY CONTEXT:\n{state['retrieved_context']}\n\n---\nUser: {user_msg}"
     messages.append(HumanMessage(content=full_input))

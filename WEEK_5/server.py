@@ -71,7 +71,14 @@ SOFT_KEYWORDS = {
 
 
 def classify_and_notify(state):
-    """Runs in a background thread — classifies the lead and sends notifications."""
+    """Runs in a background thread — classifies the lead and sends notifications.
+
+    HOT  → Telegram alert to owner + log to Google Sheets
+           Criteria: specific budget, payment plan intent, mentions ROI, ready to buy
+    WARM → Gmail notification to owner + log to Google Sheets
+           Criteria: asking about prices/availability, building regs, general interest
+    COLD → no action, no logging (session end handled by /log-session if score warrants it)
+    """
     try:
         state = classify_lead(state)
         score = state["lead_score"]
@@ -80,9 +87,11 @@ def classify_and_notify(state):
         output["score_reason"] = state.get("score_reason", "")
         if score == "HOT":
             send_telegram(state)
+            notify_n8n(output)          # HOT: Telegram + Google Sheets log
         elif score == "WARM":
             send_gmail(state)
-        notify_n8n(output)
+            notify_n8n(output)          # WARM: Gmail + Google Sheets log
+        # COLD: no notification, no Sheets log
     except Exception:
         pass
 
@@ -121,21 +130,27 @@ def run_agent():
     msg_lower = message.lower()
     is_strong_hot = any(kw in msg_lower for kw in STRONG_HOT_KEYWORDS)
     is_soft       = any(kw in msg_lower for kw in SOFT_KEYWORDS)
-    enough_turns  = len(chat_history) >= 2
 
     if is_strong_hot:
         # Sync: need the score NOW so the CTA button can appear in the response
+        # HOT → Telegram + Sheets | WARM → Gmail + Sheets | COLD → no action
         state["final_output"] = output
         state = classify_lead(state)
         output["score"] = state["lead_score"]
         output["score_reason"] = state["score_reason"]
-        threading.Thread(target=lambda: (
-            send_telegram(state) if state["lead_score"] == "HOT" else
-            send_gmail(state)    if state["lead_score"] == "WARM" else None,
-            notify_n8n(output)
-        ), daemon=True).start()
-    elif is_soft or enough_turns:
-        # Async: no CTA needed, just classify + notify in background
+        def _notify_sync(s, o):
+            score = s["lead_score"]
+            if score == "HOT":
+                send_telegram(s)
+                notify_n8n(o)           # HOT: Telegram + Google Sheets log
+            elif score == "WARM":
+                send_gmail(s)
+                notify_n8n(o)           # WARM: Gmail + Google Sheets log
+            # COLD: no notification, no Sheets log
+        threading.Thread(target=_notify_sync, args=(state, output), daemon=True).start()
+    elif is_soft:
+        # Async: buying signal detected — classify + notify in background
+        # HOT/WARM logged to Sheets; COLD silently dropped (see classify_and_notify)
         state["final_output"] = output
         threading.Thread(target=classify_and_notify, args=(state,), daemon=True).start()
 
@@ -144,8 +159,14 @@ def run_agent():
 
 @app.route("/log-session", methods=["POST"])
 def log_session():
-    """Called by frontend on CTA click or 3-min inactivity. Logs WARM/COLD sessions."""
+    """Called by frontend on CTA click or 3-min inactivity.
+    HOT/WARM: logged to Google Sheets
+    COLD: silently dropped — no value in logging uninterested sessions
+    """
     data = request.json
+    score = data.get("score", "COLD")
+    if score not in ("HOT", "WARM"):
+        return jsonify({"status": "skipped"})
     data["type"] = "inbound"
     threading.Thread(target=notify_n8n, args=(data,), daemon=True).start()
     return jsonify({"status": "logged"})
