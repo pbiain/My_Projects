@@ -37,7 +37,8 @@ Many N8N workflows I designed during the first days never made it to the final p
 
 ### What would you like to add when you have more time?
 
-Front-end improvements — mobile responsiveness works but wasn't designed that way from the start. On the research side, I'd experiment with more APIs and spend more time on prompting so the logged contacts are more relevant and actionable. Longer term: a landing page, an ads strategy connected to the chatbot, a real-time voice bot, and a simplified lot map so clients can visually see what they are looking at. A form linked to the CTA button so leads can submit their contact details directly.
+On the research side, I'd experiment with more APIs and spend more time on prompting so the logged contacts are more relevant and actionable. At API level I'd definitely improve the research by Exclusion Constraints, Word Blocklisting and data filtering once I get a decent volume of searches.
+Front-end improvements — mobile responsiveness works but wasn't designed that way from the start. Longer term: a landing page, an ads strategy connected to the chatbot, a real-time voice bot, and a simplified lot map so clients can visually see what they are looking at. A form linked to the CTA button so leads can submit their contact details directly.
 
 ---
 
@@ -89,12 +90,24 @@ In this project, the user explicitly triggers the tools via the UI — a deliber
 
 N8N works best as a lightweight notification and logging layer, not as the orchestration backbone for a Python-heavy agent. The agent POSTs structured JSON to an N8N webhook; N8N routes it to Google Sheets for all sessions and could route Telegram/Gmail at scale.
 
-The biggest lesson: N8N's visual workflows are powerful for simple routing but become unwieldy when you need loops, complex state, or conditional logic that LangGraph handles naturally in Python. I ended up inverting the original architecture — instead of N8N calling Python, Python calls N8N. Much cleaner.
+The biggest lesson: N8N's visual workflows are powerful for simple routing but become impractical and inefficient when you need loops, complex state, or conditional logic that LangGraph handles naturally and more fluidly in Python. I ended up inverting the original architecture — instead of N8N calling Python, Python calls N8N. Much cleaner. I could have N8N call Python with a scheduled trigger and an HTTP request, but I still want the user to have more control over the research process, since one of the things that needs working is research data filtering.
+
+**Error handling in N8N and Python:**
+
+On the Python side, error handling is layered across the stack:
+- `classify_and_notify()` wraps the entire background thread in `try/except Exception: pass` so a classification failure never crashes the main response
+- `send_gmail.py` has a credentials guard — skips silently if `GMAIL_USER`/`GMAIL_PASS` env vars are not set, and uses a 5s SMTP timeout to prevent gunicorn worker timeouts on Railway (a real bug I hit and fixed)
+- `send_telegram.py` has the same guard for missing bot credentials
+- Hunter.io API calls use `timeout=10` and `resp.raise_for_status()` with a caught exception that returns a user-friendly error message
+- The RAG retrieval applies a cosine similarity threshold (0.35) to silently discard irrelevant chunks rather than passing noise to the LLM
+
+On the N8N side, the webhook flow handles errors by routing non-HOT leads away from Telegram and all sessions to Google Sheets regardless of score — so even failed classifications still get logged. The Switch node acts as a gatekeeper ensuring only valid scores trigger downstream notifications.
 
 ---
 
 ### How did your RAG system perform? What would you improve?
 
+Not much really. It's not the bottleneck and it's quite efficient even though I haven't run tests because it was not necessary as there was relatively little documentation
 Works well for property-specific questions using Pinecone with `text-embedding-3-large` (1024 dimensions). The main challenge wasn't the retrieval system itself — it was data quality. The source documents had conflicting prices (two different proposals with different per-m² rates). I resolved this by:
 
 - Cleaning the Pinecone index (deleted conflicting PDFs, re-ingested 2 clean documents, 69 chunks)
@@ -114,5 +127,5 @@ It already is deployed for real clients — my parents, who are selling lots at 
 - Add a form to the CTA button so leads can submit contact details directly
 - Improve outbound research quality with better query engineering and more API sources
 - Proper mobile-first responsive redesign
-- Continue refining the agent prompting, especially around payment plans and lot availability
+- Continue refining the documentation mainly, especially around graphic info for the clients
 - Add a CRM-style lead history dashboard over time
