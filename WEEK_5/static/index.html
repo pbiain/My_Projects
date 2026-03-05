@@ -94,14 +94,6 @@
       margin: 0 4px;
     }
 
-    .lang-toggle {
-      display: flex;
-      gap: 6px;
-      margin-left: auto;
-      flex-shrink: 0;
-      align-items: center;
-    }
-
     .lang-btn {
       background: rgba(255, 255, 255, 0.07);
       border: 1px solid rgba(255, 255, 255, 0.18);
@@ -118,13 +110,6 @@
       align-items: center;
       gap: 5px;
       letter-spacing: 0.1px;
-    }
-
-    .lang-btn.active {
-      background: rgba(74, 170, 46, 0.22);
-      border-color: rgba(74, 170, 46, 0.45);
-      color: var(--green2);
-      font-weight: 700;
     }
 
     .lang-btn:hover {
@@ -246,6 +231,50 @@
     .score-COLD {
       background: #e0f2fe;
       color: #0369a1;
+    }
+
+    /* Language picker overlay */
+    #lang-picker {
+      position: fixed;
+      inset: 0;
+      background: rgba(10,18,12,0.75);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #lang-picker-card {
+      background: white;
+      border-radius: 20px;
+      padding: 36px 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    #lang-picker-card h2 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      color: var(--dark);
+    }
+    .lang-pick-btn {
+      padding: 12px 28px;
+      font-size: 16px;
+      font-family: inherit;
+      font-weight: 600;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      background: var(--faint);
+      color: var(--dark);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .lang-pick-btn:hover {
+      background: var(--forest);
+      color: white;
+      border-color: var(--forest);
+      transform: translateY(-2px);
     }
 
     .cta-btn {
@@ -414,14 +443,24 @@
       <h1>Amarras San Pedro</h1>
       <p>AI Sales Agent · San Pedro, Buenos Aires</p>
     </div>
-    <div class="lang-toggle">
-      <button id="btn-es" class="lang-btn" onclick="setLang('es')">🇦🇷 ES</button>
-      <button id="btn-en" class="lang-btn active" onclick="setLang('en')">🇺🇸 EN</button>
+    <div style="margin-left:auto;flex-shrink:0;">
       <a href="/outbound" class="lang-btn">🔍 Research</a>
     </div>
     <div class="header-divider"></div>
     <div class="status-dot" title="Online"></div>
   </header>
+
+  <!-- Language picker overlay -->
+  <div id="lang-picker">
+    <div id="lang-picker-card">
+      <img src="/static/logo.jpg" alt="Amarras San Pedro" style="width:72px;height:72px;border-radius:50%;object-fit:cover;margin-bottom:16px;">
+      <p style="margin:0 0 24px;font-size:15px;color:#5a7a52;text-align:center;">Choose your language / Elegí tu idioma</p>
+      <div style="display:flex;gap:12px;">
+        <button class="lang-pick-btn" onclick="pickLang('en')">🇺🇸 English</button>
+        <button class="lang-pick-btn" onclick="pickLang('es')">🇦🇷 Español</button>
+      </div>
+    </div>
+  </div>
 
   <div id="chat-window">
     <div id="chat-inner">
@@ -452,10 +491,19 @@
     const INACTIVITY_MS = 3 * 60 * 1000;
     let selectedLang = 'en';
 
+    function pickLang(lang) {
+      setLang(lang);
+      document.getElementById('lang-picker').style.display = 'none';
+      const welcome = chatInner.querySelector('.bubble');
+      if (welcome) {
+        welcome.textContent = lang === 'es'
+          ? '¡Hola! Soy el agente de IA de Amarras San Pedro. Preguntame sobre nuestros lotes frente al río, precios, tamaños, amenities y planes de pago. ¿En qué te puedo ayudar?'
+          : 'Hi! I\'m the Amarras San Pedro AI agent. Ask me about our waterfront lots, prices, sizes, amenities, and payment plans. How can I help you?';
+      }
+    }
+
     function setLang(lang) {
       selectedLang = lang;
-      document.getElementById('btn-es').classList.toggle('active', lang === 'es');
-      document.getElementById('btn-en').classList.toggle('active', lang === 'en');
     }
 
     async function logSession(trigger) {
