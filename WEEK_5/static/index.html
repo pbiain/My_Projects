@@ -361,7 +361,8 @@
     }
 
     #user-input::placeholder {
-      color: #b0c4a8;
+      color: var(--forest);
+      opacity: 0.7;
     }
 
     #send-btn {
@@ -434,7 +435,7 @@
 
   <div id="input-area">
     <div id="input-row">
-      <textarea id="user-input" placeholder="Ask about lots, prices, or find investor contacts..." rows="1"></textarea>
+      <textarea id="user-input" placeholder="Type here..." rows="1"></textarea>
       <button id="send-btn" title="Send">&#10148;</button>
     </div>
     <div id="hint">Press Enter to send &nbsp;·&nbsp; Shift+Enter for new line</div>
