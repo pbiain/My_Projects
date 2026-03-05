@@ -8,12 +8,10 @@ from tavily import TavilyClient
 
 load_dotenv()
 
-# Domains to skip — portals, social media, news sites
+# Domains to skip — only social media and encyclopedias
 _SKIP = {
     "wikipedia.org", "facebook.com", "instagram.com", "twitter.com",
-    "youtube.com", "linkedin.com", "mercadolibre.com.ar", "zonaprop.com.ar",
-    "argenprop.com", "properati.com.ar", "infobae.com", "clarin.com",
-    "lanacion.com.ar", "cronista.com", "eldestape.com", "ambito.com",
+    "youtube.com", "linkedin.com", "reddit.com", "tiktok.com",
 }
 
 

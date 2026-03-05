@@ -25,7 +25,7 @@ This agent automates the sales funnel:
 ## 🏗️ Architecture
 
 ```
-n8n Webhook → HTTP Request → ngrok → Flask (server.py)
+n8n Webhook → HTTP Request → Railway (server.py)
                                            ↓
                                     LangGraph Pipeline
                                            ↓

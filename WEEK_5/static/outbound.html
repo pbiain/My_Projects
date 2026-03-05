@@ -404,10 +404,10 @@
     </div>
 
     <div class="chips">
-      <span class="chip" onclick="useQuery('inmobiliarias san pedro buenos aires contacto')">Inmobiliarias San Pedro</span>
-      <span class="chip" onclick="useQuery('inversores inmuebles san pedro argentina')">Inversores San Pedro</span>
-      <span class="chip" onclick="useQuery('desarrolladores inmobiliarios zona norte Buenos Aires')">Zona Norte BA</span>
-      <span class="chip" onclick="useQuery('real estate agencies san pedro buenos aires')">En inglés</span>
+      <span class="chip" onclick="useQuery('inmobiliarias terrenos frente al río san pedro buenos aires')">Inmobiliarias San Pedro</span>
+      <span class="chip" onclick="useQuery('inversores extranjeros terrenos náuticos waterfront argentina')">Inversores Náuticos</span>
+      <span class="chip" onclick="useQuery('clubes náuticos amarras barcos río paraná argentina inversión')">Clubes Náuticos</span>
+      <span class="chip" onclick="useQuery('waterfront boating real estate investment argentina buenos aires')">Waterfront EN</span>
     </div>
 
     <div class="input-row">
@@ -548,14 +548,10 @@
             const card = document.createElement('div');
             card.className = 'contact-card';
             card.innerHTML = `
-              <div class="card-avatar">${hasDomain ? '🏢' : '👤'}</div>
+              <div class="card-avatar">🌐</div>
               <div class="card-body">
-                <div class="card-company">${c.company || c.name || c.domain || 'Unknown'}</div>
-                <div class="card-meta">
-                  ${c.domain ? `<span class="card-chip domain">🌐 ${c.domain}</span>` : ''}
-                  ${c.email  ? `<span class="card-chip email">✉️ ${c.email}</span>` : ''}
-                  ${c.name && c.name !== c.company ? `<span class="card-chip">👤 ${c.name}</span>` : ''}
-                </div>
+                <div class="card-company">${c.domain || 'Unknown'}</div>
+                ${c.company ? `<div class="card-meta"><span class="card-chip" style="font-size:11px;color:#64748b">${c.company}</span></div>` : ''}
               </div>
               ${hasDomain
                 ? `<button class="hunt-btn" onclick="autoHunt('${c.domain}')">Find Contacts →</button>`
