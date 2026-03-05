@@ -47,9 +47,34 @@ def _search_contacts(query: str):
 
 from apart_agent.graph import build_graph
 from apart_agent.notify import notify_n8n
+from apart_agent.nodes.classify_lead import classify_lead
+from apart_agent.nodes.send_telegram import send_telegram
+from apart_agent.nodes.send_gmail import send_gmail
 
 app = Flask(__name__, static_folder="static")
 graph = build_graph()
+
+HOT_KEYWORDS = {
+    "comprar", "precio", "lote", "interesado", "visitar", "pago", "cuota", "financ",
+    "buy", "price", "lot", "interested", "visit", "invest", "payment", "budget",
+}
+
+
+def classify_and_notify(state):
+    """Runs in a background thread — classifies the lead and sends notifications."""
+    try:
+        state = classify_lead(state)
+        score = state["lead_score"]
+        output = state.get("final_output", {})
+        output["score"] = score
+        output["score_reason"] = state.get("score_reason", "")
+        if score == "HOT":
+            send_telegram(state)
+        elif score == "WARM":
+            send_gmail(state)
+        notify_n8n(output)
+    except Exception:
+        pass
 
 
 @app.route("/")
@@ -66,7 +91,7 @@ def outbound():
 def run_agent():
     data = request.json
     message = data.get("message", "")
-    chat_history = data.get("chat_history", [])  # carry history from frontend
+    chat_history = data.get("chat_history", [])
 
     state = {
         "user_message":      message,
@@ -83,9 +108,13 @@ def run_agent():
     result = graph.invoke(state)
     output = result["final_output"]
 
-    # HOT leads: notify n8n immediately (Telegram alert)
-    if output.get("score") == "HOT":
-        threading.Thread(target=notify_n8n, args=(output,), daemon=True).start()
+    # Trigger classification in background when there's enough signal
+    has_keyword  = any(kw in message.lower() for kw in HOT_KEYWORDS)
+    enough_turns = len(chat_history) >= 2
+
+    if has_keyword or enough_turns:
+        state["final_output"] = output
+        threading.Thread(target=classify_and_notify, args=(state,), daemon=True).start()
 
     return jsonify(output)
 
