@@ -57,7 +57,10 @@ graph = build_graph()
 # Strong buying intent — classify sync so CTA button appears in response
 STRONG_HOT_KEYWORDS = {
     "comprar", "interesado", "me interesa", "quiero", "quisiera", "lo compro",
+    "llamar", "llamame", "llámame", "agente", "asesor", "contactar", "contacto",
+    "teléfono", "telefono", "whatsapp", "hablar", "habla",
     "buy", "interested", "i want", "i'd like to buy", "i'll take", "purchase",
+    "agent", "call", "phone", "talk", "speak", "contact", "advisor", "reach",
 }
 
 # Softer signals — classify async (no CTA needed, just logging/notifications)
