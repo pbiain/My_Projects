@@ -23,7 +23,7 @@
 
 On a technical level: the dual-mode architecture — an inbound AI sales agent that qualifies leads in real-time, combined with an outbound prospecting engine for finding real estate agencies and investors. It feels like a complete product, not a school exercise.
 
-On an emotional level: the satisfaction of seeing my parents use this agent. My mother sends me feedback to improve the responses. That feeling of building something real for people you care about is different from passing a test. And seeing the Google Sheets auto-populate with classified leads after a conversation — that felt almost magical.
+On an emotional level: the satisfaction of seeing my parents use this agent. My mother sends me feedback to improve the responses. That feeling of building something real for people you care about is different from passing a test. And seeing the Google Sheets auto-populate with classified leads after a conversation — that felt almost magical (afterwards became a big challenge)
 
 ---
 
@@ -50,7 +50,7 @@ Three challenges stand out:
 
 2. **The N8N pivot** — realizing on Day 1-2 that the N8N-first architecture I planned wasn't going to work for a Python-heavy project. Having to rebuild my mental model mid-project was disorienting but instructive. I learned the hard limits of visual workflow tools when you need loops and complex state.
 
-3. **Response latency** — the agent ran 6 sequential nodes including two LLM calls before returning anything to the user. I solved it by decoupling the user-facing pipeline (retrieve → react → assemble) from classification and notifications, running the latter asynchronously in background threads. Response time roughly halved.
+3. **Classifying** — the logging in googlesheets proved to be more challenging than expected due to duplicates or multiple loggins per user with issues with memory and contradicting commands. Specially with the live assyncronic classification and the cta button. Proper Python architecture should have been taken into account but even for claude code when analysing was a complex challenge.
 
 ---
 
@@ -120,3 +120,12 @@ It already is deployed for real clients — my parents, who are selling lots at 
 - Proper mobile-first responsive redesign
 - Continue refining the documentation mainly, especially around graphic info for the clients
 - Add a CRM-style lead history dashboard over time
+
+## Goal Setting for Next Project
+### Based on your self-assessment, identify 1-2 specific, measurable goals for your next project:
+
+Goal 1:
+Plan better and more and hope that all my planning doesn't get stuck in Claude. Imagine the interfaces and diagram what I want them to do from page to page
+
+Goal 2: Use pen and paper more for goal number 1 and not forget to design the appropriate tools to use for the things that I want and use them in the correct measure to the demand I will expose them to which in another projects it'll be a hard thing to forsee since this comes with experience. Like knowing when I will overload and API with a certain requirement.
+Also not be so impatient with credentials so I don't block them. Setup time should be scheduled in the process.

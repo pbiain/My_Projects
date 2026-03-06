@@ -147,11 +147,10 @@ def run_agent():
         output["score"] = state["lead_score"]
         output["score_reason"] = state["score_reason"]
         def _notify_sync(s, o):
-            # Score is already in the frontend response — frontend logs to Sheets via /log-session
-            # Backend only handles real-time alerts here (no notify_n8n to avoid double-log)
             score = s["lead_score"]
             if score == "HOT":
-                send_telegram(s)        # HOT: Telegram alert only — Sheets logged by frontend CTA click
+                send_telegram(s)        # HOT: Telegram alert
+                notify_n8n(o)           # HOT: immediate Sheets log — don't wait for CTA or inactivity
             elif score == "WARM":
                 send_gmail(s)           # WARM: Gmail alert only — Sheets logged by frontend inactivity
             # COLD: no action
@@ -167,13 +166,14 @@ def run_agent():
 
 @app.route("/log-session", methods=["POST"])
 def log_session():
-    """Called by frontend on CTA click or 3-min inactivity.
-    HOT/WARM: logged to Google Sheets
-    COLD: silently dropped — no value in logging uninterested sessions
+    """Called by frontend on 3-min inactivity (WARM path only).
+    WARM: logged to Google Sheets via n8n.
+    HOT: already logged immediately by backend on detection — reject here to avoid duplicates.
+    COLD: silently dropped — no value in logging uninterested sessions.
     """
     data = request.json
     score = data.get("score", "COLD")
-    if score not in ("HOT", "WARM"):
+    if score != "WARM":
         return jsonify({"status": "skipped"})
     data["type"] = "inbound"
     threading.Thread(target=notify_n8n, args=(data,), daemon=True).start()
