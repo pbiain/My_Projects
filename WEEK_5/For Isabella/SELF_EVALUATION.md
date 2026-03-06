@@ -52,6 +52,8 @@ Three challenges stand out:
 
 3. **Classifying** — the logging in googlesheets proved to be more challenging than expected due to duplicates or multiple loggins per user with issues with memory and contradicting commands. Specially with the live assyncronic classification and the cta button. Proper Python architecture should have been taken into account but even for claude code when analysing was a complex challenge.
 
+4. **Noise Injection** - Yes responses or short responses can be easily misenterpreted by pinecone. When this words appear as they generate repetition or errors by the chatbot you need to override the model. Domain-specific queries about lot details, regulations, and amenities genuinely require Pinecone since that information isn't in the model's training data, but conversational filler like acknowledgments can be handled purely from context and the system prompt.
+
 ---
 
 ### How did you implement the ReAct pattern, and what did you learn about agentic AI?
