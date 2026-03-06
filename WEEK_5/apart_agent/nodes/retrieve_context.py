@@ -36,8 +36,17 @@ def search_property_knowledge_base(query: str) -> str:
     return "\n\n".join(parts)
 
 
+_SKIP_RAG = {"yes", "sí", "si", "ok", "okay", "sure", "no", "yeah", "yep",
+             "claro", "dale", "bueno", "perfecto", "genial", "entendido"}
+
 def retrieve_context(state):
     user_msg = state["user_message"]
+
+    # Skip Pinecone entirely for conversational fillers — they produce noise, not signal
+    if user_msg.strip().lower() in _SKIP_RAG:
+        state["retrieved_context"] = ""
+        state["actions_taken"].append("rag_skipped")
+        return state
 
     # For short/vague messages, prepend last assistant reply to give RAG context
     words = user_msg.strip().split()
