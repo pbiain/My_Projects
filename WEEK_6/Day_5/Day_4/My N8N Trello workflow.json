@@ -1,0 +1,70 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "caf7a9dc-402a-4d91-b1f8-274bf04309e1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ef228313-d823-47b2-8336-79481c637768",
+      "name": "Webhook",
+      "webhookId": "caf7a9dc-402a-4d91-b1f8-274bf04309e1"
+    },
+    {
+      "parameters": {
+        "listId": "69b7305721fcd751b21e8c2c",
+        "name": "={{ $json.body.cardName }}",
+        "description": "={{ $json.body.description }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "72de8c06-6f71-47a9-b839-019cd678c2e6",
+      "name": "Create a card",
+      "credentials": {
+        "trelloApi": {
+          "id": "73ImxlLGxh0ZglGo",
+          "name": "Trello account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create a card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "4be07e5f-6d4a-42b3-a3d8-6a9a58d1025a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8de1071508c9fea34730e377fb65a5a47ac344b0f3a7f4753747bdeff3770bc8"
+  },
+  "id": "u71dMArN5x4KYuGj",
+  "tags": []
+}

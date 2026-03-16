@@ -1,0 +1,7 @@
+https://trello.com/invite/b/69b73036afd7f3e20e88e28e/ATTIe9e5dd7c8cf47e266e663707211c0a84E167EE72/smart-resource-scheduler-silvertrust
+
+https://pbiain.atlassian.net/jira/software/projects/SRS/boards/35?atlOrigin=eyJpIjoiMTVjOTAwMmI3MmY3NGJkNzljODI2NGJlNDkxNDVmNzciLCJwIjoiaiJ9
+
+Trello N8N: https://n8n-jira.app.n8n.cloud/workflow/u71dMArN5x4KYuGj?projectId=NvtdxCIyTsnE6azw
+
+Jira N8N: https://n8n-jira.app.n8n.cloud/workflow/4jgvB5wmDV6eQqdt
