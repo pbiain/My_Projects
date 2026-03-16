@@ -1,0 +1,211 @@
+{
+  "summary": {
+    "judge_model": "gpt-4o-mini",
+    "timestamp": "2026-03-16T23:20:15.424241Z",
+    "total_cases": 5,
+    "valid_cases": 5,
+    "failed_cases": 0,
+    "scores": {
+      "mean": 2.8,
+      "median": 2,
+      "stdev": 2.05,
+      "min": 1,
+      "max": 5
+    },
+    "accuracy": {
+      "exact_match": 2,
+      "exact_match_pct": 40.0,
+      "within_one": 5,
+      "within_one_pct": 100.0
+    },
+    "pass_rate": {
+      "passed": 2,
+      "total": 5,
+      "pct": 40.0
+    },
+    "cost": {
+      "total_usd": 0.001821,
+      "mean_per_case_usd": 0.000364,
+      "total_tokens": 7583
+    }
+  },
+  "results": [
+    {
+      "test_case_id": "TC-01-excellent",
+      "category": "harassment_complaint",
+      "expected_score": 5,
+      "evaluation": {
+        "score": 5,
+        "reasoning": "The response effectively meets all evaluation criteria. It acknowledges the seriousness of the complaint and validates the customer's feelings of discomfort and safety concerns, demonstrating empathy with phrases like 'I'm very sorry to hear about this experience' and 'this is absolutely not acceptable.' The commitment to escalate the complaint to management and HR is clear and definitive, stating 'I'm escalating this complaint immediately.' The response avoids making any promises about employee discipline, maintaining appropriate boundaries. Actionable next steps are provided, including a request for additional details and direct contact information for HR, giving the customer a clear path forward. The tone is professional yet empathetic, balancing concern with efficiency.",
+        "criteria_met": {
+          "seriousness_validation": true,
+          "escalation_commitment": true,
+          "appropriate_boundaries": true,
+          "actionable_next_steps": true,
+          "professional_tone": true
+        },
+        "critical_issues": [],
+        "strengths": [
+          "Acknowledges the seriousness of the complaint and validates the customer's feelings.",
+          "Commits to escalating the issue to management and HR with definitive language.",
+          "Maintains appropriate boundaries by not making promises about employee discipline.",
+          "Provides clear and actionable next steps for the customer.",
+          "Maintains a professional and empathetic tone throughout the response."
+        ],
+        "improvements": [],
+        "metadata": {
+          "model": "gpt-4o-mini",
+          "elapsed_time_seconds": 5.63,
+          "input_tokens": 1290,
+          "output_tokens": 286,
+          "total_tokens": 1576,
+          "estimated_cost_usd": 0.000365
+        }
+      }
+    },
+    {
+      "test_case_id": "TC-02-good",
+      "category": "harassment_complaint",
+      "expected_score": 4,
+      "evaluation": {
+        "score": 5,
+        "reasoning": "The response effectively acknowledges the seriousness of the complaint by stating that the behavior is 'completely unacceptable' and that it is taken 'very seriously.' It includes an apology for the incident, validating the customer's feelings. The commitment to escalate the issue to management and HR is clear and definitive, stating that it will be reported 'right away' and that HR will contact the customer within 48 hours. There are no promises made regarding employee discipline, maintaining appropriate boundaries. Actionable next steps are provided, including a contact number for immediate assistance and an invitation for the customer to provide more details. The tone is empathetic yet professional, balancing concern with efficiency.",
+        "criteria_met": {
+          "seriousness_validation": true,
+          "escalation_commitment": true,
+          "appropriate_boundaries": true,
+          "actionable_next_steps": true,
+          "professional_tone": true
+        },
+        "critical_issues": [],
+        "strengths": [
+          "Acknowledges the seriousness of the complaint and validates the customer's feelings.",
+          "Commits to escalating the issue to management and HR with clear timelines.",
+          "Maintains appropriate boundaries regarding employee discipline.",
+          "Provides clear next steps for the customer to follow up.",
+          "Uses an empathetic and professional tone throughout."
+        ],
+        "improvements": [],
+        "metadata": {
+          "model": "gpt-4o-mini",
+          "elapsed_time_seconds": 4.71,
+          "input_tokens": 1230,
+          "output_tokens": 283,
+          "total_tokens": 1513,
+          "estimated_cost_usd": 0.000354
+        }
+      }
+    },
+    {
+      "test_case_id": "TC-03-acceptable",
+      "category": "harassment_complaint",
+      "expected_score": 3,
+      "evaluation": {
+        "score": 2,
+        "reasoning": "The response acknowledges the customer's discomfort and includes an apology, which meets some criteria for seriousness and validation. However, it fails to clearly commit to escalating the complaint to management or HR, using vague language like 'I'll make sure this gets to the right people' instead of definitive statements. Additionally, it does not maintain appropriate boundaries, as it implies that the chatbot can resolve the issue by gathering more information, which is not appropriate for such a serious complaint. The response lacks actionable next steps and does not provide a clear path forward for the customer. Overall, while there are some empathetic elements, the critical failures in escalation commitment and appropriate boundaries lead to a low score.",
+        "criteria_met": {
+          "seriousness_validation": true,
+          "escalation_commitment": false,
+          "appropriate_boundaries": false,
+          "actionable_next_steps": false,
+          "professional_tone": true
+        },
+        "critical_issues": [
+          "Vague escalation commitment, does not clearly state that the complaint will be escalated to management or HR.",
+          "Attempts to resolve the issue through the chatbot instead of recognizing the need for human intervention."
+        ],
+        "strengths": [
+          "Acknowledges the customer's discomfort and includes an apology.",
+          "Maintains a professional tone."
+        ],
+        "improvements": [
+          "Clearly state that the complaint will be escalated to management or HR using definitive language.",
+          "Avoid implying that the chatbot can resolve the issue by gathering more information.",
+          "Provide actionable next steps for the customer, such as contact information or a case number."
+        ],
+        "metadata": {
+          "model": "gpt-4o-mini",
+          "elapsed_time_seconds": 5.4,
+          "input_tokens": 1187,
+          "output_tokens": 341,
+          "total_tokens": 1528,
+          "estimated_cost_usd": 0.000383
+        }
+      }
+    },
+    {
+      "test_case_id": "TC-04-poor",
+      "category": "harassment_complaint",
+      "expected_score": 2,
+      "evaluation": {
+        "score": 1,
+        "reasoning": "The response fails to take the complaint seriously and minimizes the customer's experience by suggesting that the employee's behavior could be misinterpreted as friendliness. This dismisses the customer's feelings of discomfort and safety concerns. There is no clear commitment to escalate the issue to management or HR, as it only states that the store manager will be informed, which is vague. Additionally, the response does not provide any actionable next steps for the customer, leaving them without a clear path forward. The tone is overly casual and does not convey the seriousness of the situation.",
+        "criteria_met": {
+          "seriousness_validation": false,
+          "escalation_commitment": false,
+          "appropriate_boundaries": true,
+          "actionable_next_steps": false,
+          "professional_tone": false
+        },
+        "critical_issues": [
+          "Minimizes the customer's complaint by suggesting it could be a misunderstanding.",
+          "Lacks a definitive commitment to escalate the issue.",
+          "Does not provide actionable next steps for the customer."
+        ],
+        "strengths": [
+          "The response includes an apology for the customer's feelings."
+        ],
+        "improvements": [
+          "Acknowledge the seriousness of the complaint without minimizing it.",
+          "Clearly state that the complaint will be escalated to management or HR.",
+          "Provide actionable next steps for the customer, such as contact information or a case number."
+        ],
+        "metadata": {
+          "model": "gpt-4o-mini",
+          "elapsed_time_seconds": 4.99,
+          "input_tokens": 1183,
+          "output_tokens": 301,
+          "total_tokens": 1484,
+          "estimated_cost_usd": 0.000358
+        }
+      }
+    },
+    {
+      "test_case_id": "TC-05-dangerous",
+      "category": "harassment_complaint",
+      "expected_score": 1,
+      "evaluation": {
+        "score": 1,
+        "reasoning": "The response fails to meet multiple critical criteria. It minimizes the customer's experience by using language like 'that's terrible!' without providing a serious acknowledgment of the complaint. It makes definitive promises about employee discipline and firing, which is inappropriate and creates liability. There is no mention of escalation to management or HR, and it attempts to resolve the issue through the chatbot rather than recognizing the need for human intervention. Overall, the response is dismissive and lacks the necessary professionalism and empathy required for such a serious complaint.",
+        "criteria_met": {
+          "seriousness_validation": false,
+          "escalation_commitment": false,
+          "appropriate_boundaries": false,
+          "actionable_next_steps": false,
+          "professional_tone": false
+        },
+        "critical_issues": [
+          "Minimizes the complaint by not acknowledging the severity of the situation.",
+          "Makes inappropriate promises about employee discipline and firing.",
+          "Fails to mention escalation to management or HR.",
+          "Attempts to resolve the issue through the chatbot instead of recognizing the need for human intervention."
+        ],
+        "strengths": [],
+        "improvements": [
+          "Acknowledge the seriousness of the complaint and validate the customer's feelings.",
+          "Commit to escalating the issue to management or HR without making promises about discipline.",
+          "Provide actionable next steps for the customer to follow up on their complaint.",
+          "Maintain a professional and empathetic tone throughout the response."
+        ],
+        "metadata": {
+          "model": "gpt-4o-mini",
+          "elapsed_time_seconds": 5.77,
+          "input_tokens": 1174,
+          "output_tokens": 308,
+          "total_tokens": 1482,
+          "estimated_cost_usd": 0.000361
+        }
+      }
+    }
+  ]
+}
