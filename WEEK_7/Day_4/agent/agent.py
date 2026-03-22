@@ -1,177 +1,188 @@
 """
 Fleet Cost Intelligence Agent
-LangChain/LangGraph agent for Chleo SME — Regional Haulage, Spain
-Generates actionable fuel cost insights from fleet data
+LangGraph agent for Chleo SME — Regional Haulage, Spain
+Compatible with langchain-core >= 1.0, langchain-community >= 0.4
 """
 
 import os
-import pandas as pd
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from langchain.agents import AgentExecutor, create_openai_functions_agent
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage
+from langchain_core.tools import tool
+from langgraph.prebuilt import create_react_agent
 from langsmith import traceable
-from tools import (
-    get_fleet_summary,
-    get_fuel_anomalies,
-    get_top_fuel_trucks,
-    get_monthly_fuel_trend,
-    get_driver_performance,
-    get_cost_breakdown
-)
+import pandas as pd
 
 load_dotenv()
 
-# Initialize LLM
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0.2,
-    api_key=os.getenv("OPENAI_API_KEY")
-)
+DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "processed")
 
-# System prompt — focused on Chleo's context
-SYSTEM_PROMPT = """You are an AI fleet cost analyst for Chleo SME, a regional haulage company in Spain operating 50 trucks.
+def _load_costs():
+    df = pd.read_csv(os.path.join(DATA_PATH, "processed_costs.csv"))
+    df["Date"] = pd.to_datetime(df["Date"])
+    for col in ["Fuel", "Maintenance", "Tolls", "Fixed Costs", "Total Cost"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    df["Truck ID"] = df["Truck ID"].astype(str).str.strip()
+    df["Driver ID"] = df["Driver ID"].astype(str).str.strip()
+    return df
 
-Your role is to analyze fleet cost data and generate clear, actionable insights for the operations manager and CEO.
+def _load_drivers():
+    df = pd.read_csv(os.path.join(DATA_PATH, "dim_drivers.csv"))
+    df["Driver ID"] = df["Driver ID"].astype(str).str.strip()
+    return df
 
-Key context:
-- Fuel costs represent ~30-35% of total operating costs
-- Net margin is only 2-3% — every euro saved in fuel drops directly to net income
-- Chleo is skeptical about AI — always explain your reasoning clearly
-- The company uses synthetic TMS and fuel card data (2018-2019)
-- Fleet average fuel cost per month: ~€3,057
+def _load_vehicles():
+    df = pd.read_csv(os.path.join(DATA_PATH, "dim_vehicles.csv"))
+    df["Truck ID"] = df["Truck ID"].astype(str).str.strip()
+    return df
 
-When generating insights:
-1. Be specific — mention exact truck IDs, dates, and percentages
-2. Be actionable — every insight must suggest a concrete next step
-3. Be transparent — explain what data you used and why you flagged it
-4. Keep language simple — the audience is an operations manager, not a data scientist
+@tool
+def get_fleet_summary(period: str = "all") -> str:
+    """Get high-level fleet performance summary. period options: all, 2018, 2019"""
+    df = _load_costs()
+    if period in ("2018", "2019"):
+        df = df[df["Date"].dt.year == int(period)]
+    total_fuel = df["Fuel"].sum()
+    total_cost = df["Total Cost"].sum()
+    fleet_size = df["Truck ID"].nunique()
+    months     = df["Date"].nunique()
+    fuel_pct   = (total_fuel / total_cost * 100).round(1)
+    return (
+        f"Fleet summary ({period}): {fleet_size} trucks, {months} months. "
+        f"Total fuel: €{total_fuel:,.0f} ({fuel_pct}% of total cost €{total_cost:,.0f}). "
+        f"Monthly fleet avg fuel: €{(total_fuel/months):,.0f}."
+    )
 
-Available tools:
-- get_fleet_summary: Overview of entire fleet performance
-- get_fuel_anomalies: Trucks burning above threshold
-- get_top_fuel_trucks: Highest fuel consumers ranked
-- get_monthly_fuel_trend: Fuel cost over time
-- get_driver_performance: Cost metrics per driver
-- get_cost_breakdown: Split of fuel, maintenance, tolls, fixed costs
-"""
+@tool
+def get_fuel_anomalies(threshold_pct: float = 20.0) -> str:
+    """Find trucks burning more than threshold_pct above monthly fleet average."""
+    df = _load_costs()
+    monthly_avg = df.groupby("Date")["Fuel"].mean()
+    df = df.copy()
+    df["monthly_avg"] = df["Date"].map(monthly_avg)
+    df["pct_above"] = ((df["Fuel"] - df["monthly_avg"]) / df["monthly_avg"] * 100).round(1)
+    anomalies = df[df["pct_above"] > threshold_pct].sort_values("pct_above", ascending=False)
+    if anomalies.empty:
+        return f"No anomalies above {threshold_pct}% threshold."
+    lines = [f"{len(anomalies)} anomalous records (>{threshold_pct}% above avg):"]
+    for _, r in anomalies.head(5).iterrows():
+        lines.append(f"Truck {r['Truck ID']} | {r['Date'].strftime('%b %Y')} | €{r['Fuel']:,.0f} | {r['pct_above']:.0f}% above avg")
+    return "\n".join(lines)
 
-# Build prompt
-prompt = ChatPromptTemplate.from_messages([
-    ("system", SYSTEM_PROMPT),
-    MessagesPlaceholder(variable_name="chat_history"),
-    ("human", "{input}"),
-    MessagesPlaceholder(variable_name="agent_scratchpad"),
-])
+@tool
+def get_top_fuel_trucks(n: int = 5) -> str:
+    """Get top n trucks ranked by total fuel spend."""
+    df = _load_costs()
+    vehicles = _load_vehicles()
+    ranked = (
+        df.groupby("Truck ID")["Fuel"]
+        .agg(total="sum", monthly_avg="mean")
+        .reset_index()
+        .merge(vehicles[["Truck ID", "Brand", "Truck Type"]], on="Truck ID", how="left")
+        .nlargest(n, "total")
+    )
+    fleet_avg = df["Fuel"].mean()
+    lines = [f"Top {n} trucks by fuel:"]
+    for i, (_, r) in enumerate(ranked.iterrows(), 1):
+        pct = ((r["monthly_avg"] - fleet_avg) / fleet_avg * 100).round(0)
+        lines.append(f"{i}. Truck {r['Truck ID']} — Total €{r['total']:,.0f} | Monthly avg €{r['monthly_avg']:,.0f} ({pct:+.0f}%)")
+    return "\n".join(lines)
 
-# Tools list
-tools = [
-    get_fleet_summary,
-    get_fuel_anomalies,
-    get_top_fuel_trucks,
-    get_monthly_fuel_trend,
-    get_driver_performance,
-    get_cost_breakdown
-]
+@tool
+def get_monthly_fuel_trend(year: str = "all") -> str:
+    """Analyze monthly fuel cost trend. year options: all, 2018, 2019"""
+    df = _load_costs()
+    if year != "all":
+        df = df[df["Date"].dt.year == int(year)]
+    monthly = df.groupby("Date")["Fuel"].sum().reset_index().sort_values("Date")
+    peak   = monthly.loc[monthly["Fuel"].idxmax()]
+    trough = monthly.loc[monthly["Fuel"].idxmin()]
+    lines  = [f"Fuel trend ({year}): Peak {peak['Date'].strftime('%b %Y')} €{peak['Fuel']:,.0f} | Low {trough['Date'].strftime('%b %Y')} €{trough['Fuel']:,.0f}"]
+    for _, r in monthly.iterrows():
+        lines.append(f"  {r['Date'].strftime('%b %Y')}: €{r['Fuel']:,.0f}")
+    return "\n".join(lines)
 
-# Create agent
-agent = create_openai_functions_agent(llm, tools, prompt)
-agent_executor = AgentExecutor(
-    agent=agent,
-    tools=tools,
-    verbose=True,
-    max_iterations=5,
-    handle_parsing_errors=True
-)
+@tool
+def get_driver_performance() -> str:
+    """Compare driver fuel efficiency."""
+    df = _load_costs()
+    drivers = _load_drivers()
+    stats = (
+        df.groupby("Driver ID")["Fuel"].agg(avg="mean", total="sum")
+        .reset_index()
+        .merge(drivers, on="Driver ID", how="left")
+        .sort_values("avg", ascending=False)
+    )
+    fleet_avg = stats["avg"].mean()
+    best  = stats.iloc[-1]
+    worst = stats.iloc[0]
+    lines = [
+        f"Driver performance (fleet avg €{fleet_avg:,.0f}/mo):",
+        f"Best:  {best.get('Driver', best['Driver ID'])} €{best['avg']:,.0f}/mo",
+        f"Worst: {worst.get('Driver', worst['Driver ID'])} €{worst['avg']:,.0f}/mo ({((worst['avg']-fleet_avg)/fleet_avg*100):+.0f}%)",
+    ]
+    return "\n".join(lines)
 
+@tool
+def get_cost_breakdown() -> str:
+    """Get total cost breakdown by category."""
+    df = _load_costs()
+    fuel  = df["Fuel"].sum()
+    maint = df["Maintenance"].sum()
+    tolls = df["Tolls"].sum()
+    fixed = df["Fixed Costs"].sum()
+    total = df["Total Cost"].sum()
+    return (
+        f"Cost breakdown: Fixed {fixed/total*100:.1f}% €{fixed:,.0f} | "
+        f"Fuel {fuel/total*100:.1f}% €{fuel:,.0f} | "
+        f"Maintenance {maint/total*100:.1f}% €{maint:,.0f} | "
+        f"Tolls {tolls/total*100:.1f}% €{tolls:,.0f} | "
+        f"5% fuel cut = €{fuel*0.05:,.0f} saved"
+    )
+
+SYSTEM_PROMPT = """You are an AI fleet cost analyst for Chleo SME, a regional haulage company in Spain with 50 trucks.
+Generate clear, specific, actionable insights. Always mention exact truck IDs, dates, percentages.
+Every insight must include a concrete next step. Keep language simple."""
+
+tools = [get_fleet_summary, get_fuel_anomalies, get_top_fuel_trucks,
+         get_monthly_fuel_trend, get_driver_performance, get_cost_breakdown]
+
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2, api_key=os.getenv("OPENAI_API_KEY"))
+agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
 
 @traceable(name="fleet-insight-agent")
-def run_agent(query: str, chat_history: list = None) -> str:
-    """
-    Run the fleet cost intelligence agent.
-    
-    Args:
-        query: Question or request from the operations manager
-        chat_history: Previous conversation turns
-    
-    Returns:
-        Agent response with insight and recommendations
-    """
-    if chat_history is None:
-        chat_history = []
-    
-    result = agent_executor.invoke({
-        "input": query,
-        "chat_history": chat_history
-    })
-    
-    return result["output"]
-
+def run_agent(query: str) -> str:
+    result = agent.invoke({"messages": [HumanMessage(content=query)]})
+    return result["messages"][-1].content
 
 @traceable(name="weekly-fleet-report")
-def generate_weekly_report() -> dict:
-    """
-    Generate a complete weekly fleet intelligence report.
-    Runs automatically every Monday morning.
-    
-    Returns:
-        Dictionary with insights, anomalies, and recommendations
-    """
-    print("Generating weekly fleet intelligence report...")
-    
-    insights = []
-    
-    # 1. Fleet overview
-    overview = run_agent("Give me a summary of overall fleet performance this period. Focus on fuel costs.")
-    insights.append({"type": "overview", "insight": overview})
-    
-    # 2. Anomaly detection
-    anomalies = run_agent("Which trucks have the highest fuel costs above fleet average? List the top 3 with specific percentages.")
-    insights.append({"type": "anomalies", "insight": anomalies})
-    
-    # 3. Trend analysis
-    trend = run_agent("Is fuel consumption trending up or down over the past few months? What's driving the change?")
-    insights.append({"type": "trend", "insight": trend})
-    
-    # 4. Driver performance
-    drivers = run_agent("Which drivers have the best and worst fuel efficiency? What should we do about the worst performer?")
-    insights.append({"type": "drivers", "insight": drivers})
-    
-    # 5. Cost recommendation
-    recommendation = run_agent("What is the single most impactful action Chleo could take this week to reduce fuel costs?")
-    insights.append({"type": "recommendation", "insight": recommendation})
-    
-    return {
-        "report_type": "weekly_fleet_intelligence",
-        "company": "Chleo SME",
-        "insights_count": len(insights),
-        "insights": insights
-    }
-
+def generate_weekly_report() -> None:
+    queries = [
+        "Give me a fleet performance summary focusing on fuel costs.",
+        "Which trucks have the highest fuel costs above fleet average? Top 3.",
+        "Is fuel consumption trending up or down and why?",
+        "Which drivers have the best and worst fuel efficiency?",
+        "What is the single most impactful action to reduce fuel costs this week?",
+    ]
+    print("\n=== WEEKLY FLEET INTELLIGENCE REPORT ===\n")
+    for i, q in enumerate(queries, 1):
+        print(f"[{i}] {q}")
+        print(run_agent(q))
+        print()
 
 if __name__ == "__main__":
     print("Fleet Cost Intelligence Agent — Chleo SME")
-    print("=" * 50)
-    
-    # Interactive mode
-    chat_history = []
-    print("Ask me anything about the fleet. Type 'report' for full weekly report. Type 'quit' to exit.\n")
-    
+    print("Type 'report' for weekly report | 'quit' to exit\n")
     while True:
-        user_input = input("You: ").strip()
-        
+        try:
+            user_input = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+        if not user_input:
+            continue
         if user_input.lower() == "quit":
             break
         elif user_input.lower() == "report":
-            report = generate_weekly_report()
-            print("\n=== WEEKLY FLEET INTELLIGENCE REPORT ===")
-            for item in report["insights"]:
-                print(f"\n[{item['type'].upper()}]")
-                print(item["insight"])
-            print("\n" + "=" * 50)
+            generate_weekly_report()
         else:
-            response = run_agent(user_input, chat_history)
-            print(f"\nAgent: {response}\n")
-            chat_history.append(HumanMessage(content=user_input))
-            chat_history.append(AIMessage(content=response))
+            print(f"\nAgent: {run_agent(user_input)}\n")
