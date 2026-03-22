@@ -1,0 +1,20 @@
+# Fleet Cost Intelligence — Chleo SME
+# Project 5 — IronHack AI Bootcamp Week 7
+
+# Core LLM and agent framework
+langchain==0.3.0
+langchain-openai==0.2.0
+langchain-core==0.3.0
+langgraph==0.2.0
+langsmith==0.1.120
+openai==1.50.0
+
+# Data processing
+pandas==2.2.0
+numpy==1.26.0
+
+# Environment and utilities
+python-dotenv==1.0.0
+
+# Optional: for running the presentation script locally
+# node and pptxgenjs required (npm install -g pptxgenjs)
