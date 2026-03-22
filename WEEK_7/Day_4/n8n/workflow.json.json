@@ -1,0 +1,384 @@
+{
+  "name": "Fuel Anomaly Alert — Chleo SME",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6bccf781-8179-409a-8d73-70f8958dc7cf",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/pbiain/My_Projects/refs/heads/main/WEEK_7/Day_4/data/processed/processed_costs.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5163e1e2-fdba-48b3-bbb0-d79bcbea0020",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all items from the HTTP Request (CSV data)\nconst items = $input.all();\n\n// Parse CSV text into rows\nconst csvText = items[0].json.data;\nconst lines = csvText.split('\\n');\nconst headers = lines[0].split(',');\n\n// Build array of truck cost objects\nconst truckData = [];\nfor (let i = 1; i < lines.length; i++) {\n  if (!lines[i].trim()) continue;\n  const values = lines[i].split(',');\n  const row = {};\n  headers.forEach((header, idx) => {\n    row[header.trim()] = values[idx] ? values[idx].trim() : '';\n  });\n  truckData.push(row);\n}\n\n// Calculate average fuel across all trucks\nconst fuelValues = truckData\n  .map(r => parseFloat(r['Fuel']))\n  .filter(v => !isNaN(v));\n\nconst avgFuel = fuelValues.reduce((a, b) => a + b, 0) / fuelValues.length;\nconst threshold = avgFuel * 1.2; // 20% above average = anomaly\n\n// Find anomalous trucks\nconst anomalies = truckData.filter(r => parseFloat(r['Fuel']) > threshold);\n\n// Return results\nreturn anomalies.map(truck => ({\n  json: {\n    truckId: truck['Truck ID'],\n    fuel: parseFloat(truck['Fuel']),\n    avgFuel: Math.round(avgFuel),\n    threshold: Math.round(threshold),\n    percentAboveAvg: Math.round((parseFloat(truck['Fuel']) / avgFuel - 1) * 100),\n    date: truck['Date'],\n    driverId: truck['Driver ID']\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "52e269d2-a1f8-4310-8fb5-ccac450ca6b8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bae74559-2d36-49d8-a184-374761d8d460",
+              "leftValue": "={{ $json.percentAboveAvg }}",
+              "rightValue": 20,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "6c100cbb-427b-449e-9e78-627276cee04a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "biainpedro0@gmail.com",
+        "subject": "=⚠️ Fuel Anomaly Detected — Truck {{ $json.truckId }}",
+        "message": "=Fuel anomaly detected on {{ $json.date }}  Truck ID: {{ $json.truckId }} Driver ID: {{ $json.driverId }} Fuel Cost: {{ $json.fuel }} Fleet Average: {{ $json.avgFuel }} % Above Average: {{ $json.percentAboveAvg }}%  Action required: Review route and driver behaviour for this truck.  — Chleo SME Automated Alert System",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        -128
+      ],
+      "id": "41c600f4-2437-4f22-a74d-8e803a368759",
+      "name": "Send a message",
+      "webhookId": "48c811de-1336-462d-af33-162032e0200c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "89dpDH1sb9WJ7SGn",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1To3HT36JeGH5ULYFIXadmyHIWJYJpbuGQRQqR7KwRV0",
+          "mode": "list",
+          "cachedResultName": "Fuel Anomaly Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1To3HT36JeGH5ULYFIXadmyHIWJYJpbuGQRQqR7KwRV0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Fuel tracking",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1To3HT36JeGH5ULYFIXadmyHIWJYJpbuGQRQqR7KwRV0/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Truck ID": "={{ $json.truckId }}",
+            "Date": "={{ $json.date }}",
+            "Fuel Cost": "={{ $json.fuel }}",
+            "% Above Average": "={{ $json.percentAboveAvg }}",
+            "Driver ID": "={{ $json.driverId }}"
+          },
+          "matchingColumns": [
+            "Truck ID"
+          ],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Truck ID",
+              "displayName": "Truck ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fuel Cost",
+              "displayName": "Fuel Cost",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "% Above Average",
+              "displayName": "% Above Average",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Driver ID",
+              "displayName": "Driver ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        896,
+        96
+      ],
+      "id": "9b4f91b7-fa2d-4855-b7f4-bf4fcd5ce4cb",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "T0iO2Kv0VclLdzY9",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appD6CLHsEGa0doQp",
+          "mode": "list",
+          "cachedResultName": "Fuel Anomaly Log",
+          "cachedResultUrl": "https://airtable.com/appD6CLHsEGa0doQp"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblNXyCN4dQRuNOV9",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appD6CLHsEGa0doQp/tblNXyCN4dQRuNOV9"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.date }}",
+            "Truck ID": "={{ $json.truckId }}",
+            "Fuel Cost": "={{ $json.fuel }}",
+            "% Above Average": "={{ $json.percentAboveAvg }}",
+            "Driver ID": "={{ $json.driverId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Truck ID",
+              "displayName": "Truck ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fuel Cost",
+              "displayName": "Fuel Cost",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "% Above Average",
+              "displayName": "% Above Average",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Driver ID",
+              "displayName": "Driver ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        912,
+        288
+      ],
+      "id": "a85bc74e-249f-427a-a4c5-c2297e7206e0",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "3bkqRugse3Z0jM6G",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "274d15af-65bd-4f57-93ee-8f23da6330e5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8de1071508c9fea34730e377fb65a5a47ac344b0f3a7f4753747bdeff3770bc8"
+  },
+  "id": "q70rYZeyYm98NNV7",
+  "tags": []
+}
