@@ -28,6 +28,28 @@ class LLMClient:
         else:
             self.langsmith_client = None
 
+    def _redact_pii(self, invoice_data: dict) -> dict:
+        """
+        Remove customer PII before sending invoice data to any external LLM.
+        GDPR: customer name, address, and contact details are not required
+        for billing classification and must not leave the system boundary.
+        """
+        import hashlib
+        redacted = invoice_data.copy()
+        # Replace identifying fields with a consistent pseudonym
+        # (same customer always gets same token — useful for audit)
+        raw_id = (
+            str(redacted.get("ship_name", ""))
+            + str(redacted.get("ship_addr1", ""))
+            + str(redacted.get("ship_zip", ""))
+        )
+        token = "CLIENT-" + hashlib.sha256(raw_id.encode()).hexdigest()[:8].upper()
+
+        for field in ("ship_name", "ship_addr1", "ship_city", "ship_state", "ship_zip"):
+            if field in redacted:
+                redacted[field] = token
+        return redacted
+
     async def classify_invoice(self, invoice_data: dict) -> dict:
         """
         Classify an invoice using GPT-4o
@@ -41,6 +63,9 @@ class LLMClient:
         # Return mock response if OpenAI client not available
         if not self.openai_client:
             return self._mock_classification(invoice_data)
+
+        # Redact PII before sending to external LLM (GDPR)
+        invoice_data = self._redact_pii(invoice_data)
 
         system_prompt = """You are a billing validation AI for VaultGuard Inc., a cash management company. You analyse smart safe maintenance invoices to determine whether the cost should be billed to the client (YES) or absorbed by VaultGuard (NO).
 
@@ -190,6 +215,10 @@ Classify this invoice."""
 
         if not self.openai_client:
             raise ValueError("OpenAI client not configured")
+
+        # GDPR NOTE: PDF extraction is the only step where raw PII (customer name,
+        # address) is sent to OpenAI — this is necessary to extract the structured data.
+        # All subsequent LLM calls (classification) use _redact_pii() first.
 
         # Upload PDF to OpenAI Files API to avoid inline base64 context limit
         pdf_bytes = base64.b64decode(pdf_base64)
