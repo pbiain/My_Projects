@@ -3,7 +3,7 @@
 Invoice Processor for VaultGuard API Server
 """
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pydantic import BaseModel
 
 from .llm_client import LLMClient
@@ -13,7 +13,7 @@ class InvoiceData(BaseModel):
     """Invoice data model"""
     invoice_id: str
     serial_number: str
-    safe_age_yr: float = None
+    safe_age_yr: Optional[float] = None
     labour_charge: float
     parts_cost: float
     total_amount: float
