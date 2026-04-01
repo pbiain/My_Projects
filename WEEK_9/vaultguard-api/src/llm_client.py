@@ -201,7 +201,12 @@ Classify this invoice."""
     async def extract_invoice_data(self, pdf_base64: str, filename: str) -> list[dict]:
         """
         Extract invoice data from a base64-encoded PDF.
-        Uploads to OpenAI Files API first to avoid context length limits.
+        Uses pypdf to extract text locally, then sends text to GPT-4o Chat Completions.
+        This avoids context length limits from sending raw PDF bytes.
+
+        GDPR NOTE: PDF text (including customer PII) is sent to OpenAI here —
+        this is the only step where PII leaves the system. All subsequent
+        LLM calls (classification) use _redact_pii() first.
 
         Args:
             pdf_base64: Standard base64-encoded PDF content
@@ -212,58 +217,49 @@ Classify this invoice."""
         """
         import base64
         import io
+        from pypdf import PdfReader
 
         if not self.openai_client:
             raise ValueError("OpenAI client not configured")
 
-        # GDPR NOTE: PDF extraction is the only step where raw PII (customer name,
-        # address) is sent to OpenAI — this is necessary to extract the structured data.
-        # All subsequent LLM calls (classification) use _redact_pii() first.
-
-        # Upload PDF to OpenAI Files API to avoid inline base64 context limit
+        # Extract text locally — no API size limits
         pdf_bytes = base64.b64decode(pdf_base64)
-        file_obj = io.BytesIO(pdf_bytes)
-        file_obj.name = filename
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
 
-        uploaded = await self.openai_client.files.create(
-            file=(filename, file_obj, "application/pdf"),
-            purpose="assistants"
+        if not text.strip():
+            raise ValueError("Could not extract text from PDF — it may be image-based")
+
+        response = await self.openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a data extraction assistant. Extract structured invoice data "
+                        "from Tidel service invoice text. Return ONLY a JSON array, no markdown, no preamble."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "Extract all invoice line items from this Tidel service invoice text. "
+                        "Return a JSON array where each element represents one invoice with these exact fields: "
+                        "invoice_number, invoice_date, serial_number, branch_number, po_number, "
+                        "ship_name, ship_addr1, ship_city, ship_state, ship_zip, call_number, "
+                        "labor_charge (number), parts_amount (number), shipping_amount (number), "
+                        "subtotal (number), tax_amount (number), total_amount (number), "
+                        "oos_tier1, oos_tier2, comment. "
+                        "Return ONLY the JSON array, no markdown, no preamble.\n\n"
+                        f"=== INVOICE TEXT ===\n{text}"
+                    )
+                }
+            ],
+            temperature=0.1,
+            max_tokens=4000
         )
-        file_id = uploaded.id
 
-        try:
-            response = await self.openai_client.responses.create(
-                model="gpt-4o",
-                input=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "input_file",
-                                "file_id": file_id
-                            },
-                            {
-                                "type": "input_text",
-                                "text": (
-                                    "Extract all invoice line items from this Tidel service invoice PDF. "
-                                    "Return a JSON array where each element represents one invoice with these exact fields: "
-                                    "invoice_number, invoice_date, serial_number, branch_number, po_number, "
-                                    "ship_name, ship_addr1, ship_city, ship_state, ship_zip, call_number, "
-                                    "labor_charge (number), parts_amount (number), shipping_amount (number), "
-                                    "subtotal (number), tax_amount (number), total_amount (number), "
-                                    "oos_tier1, oos_tier2, comment. "
-                                    "Return ONLY the JSON array, no markdown, no preamble."
-                                )
-                            }
-                        ]
-                    }
-                ]
-            )
-        finally:
-            # Clean up uploaded file to avoid storage buildup
-            await self.openai_client.files.delete(file_id)
-
-        content = response.output[0].content[0].text
+        content = response.choices[0].message.content
         clean = content.replace("```json", "").replace("```", "").strip()
         invoices = json.loads(clean)
         if not isinstance(invoices, list):
