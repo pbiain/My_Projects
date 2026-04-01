@@ -227,6 +227,14 @@ Classify this invoice."""
 
         image_contents = []
         for page in doc:
+            # Redact all embedded images (logos, stamps) before rendering — GDPR/confidentiality
+            for img in page.get_images(full=True):
+                xref = img[0]
+                rects = page.get_image_rects(xref)
+                for rect in rects:
+                    page.add_redact_annot(rect, fill=(1, 1, 1))  # white fill
+            page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_REMOVE)
+
             # Render at 150 DPI — enough for OCR, small enough for API
             mat = fitz.Matrix(150 / 72, 150 / 72)
             pix = page.get_pixmap(matrix=mat)
