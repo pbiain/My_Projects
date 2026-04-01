@@ -269,12 +269,33 @@ Classify this invoice."""
             model="gpt-4o",
             messages=[{"role": "user", "content": image_contents}],
             temperature=0.1,
-            max_tokens=4000
+            max_tokens=16000
         )
 
         content = response.choices[0].message.content
+        finish_reason = response.choices[0].finish_reason
+
+        # Strip markdown fences
         clean = content.replace("```json", "").replace("```", "").strip()
-        invoices = json.loads(clean)
+
+        # If response was cut off, try to salvage partial JSON by closing the array
+        if finish_reason == "length" and not clean.endswith("]"):
+            # Close last incomplete object and the array
+            last_brace = clean.rfind("}")
+            if last_brace != -1:
+                clean = clean[:last_brace + 1] + "]"
+            else:
+                clean = clean + "}]"
+
+        try:
+            invoices = json.loads(clean)
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"GPT-4o returned invalid JSON (finish_reason={finish_reason}). "
+                f"Parse error: {e}. "
+                f"Response preview: {content[:500]}"
+            )
+
         if not isinstance(invoices, list):
             invoices = [invoices]
         return invoices
