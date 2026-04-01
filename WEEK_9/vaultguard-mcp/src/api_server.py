@@ -25,6 +25,14 @@ GL_CODE_YES = 440134
 GL_CODE_NO = 440133
 
 
+class ExtractRequest(BaseModel):
+    """PDF extraction request — accepts base64 PDF from Gmail"""
+    data: str  # URL-safe or standard base64
+    pdfName: str = "invoice.pdf"
+    batchName: str = ""
+    processedAt: str = ""
+
+
 class ClassifyRequest(BaseModel):
     """Accepts both MCP field names and n8n workflow field names"""
     # Standard MCP fields
@@ -42,6 +50,24 @@ class ClassifyRequest(BaseModel):
     invoice_number: Optional[str] = None
     labor_charge: Optional[float] = None
     parts_amount: Optional[float] = None
+
+
+@app.post("/extract")
+async def extract_invoices(req: ExtractRequest):
+    """Extract invoices from a base64 PDF — called once per email by n8n"""
+    # Gmail returns URL-safe base64 — normalize to standard
+    standard_b64 = req.data.replace("-", "+").replace("_", "/")
+    try:
+        invoices = await llm_client.extract_invoice_data(standard_b64, req.pdfName)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+
+    return {
+        "invoices": invoices,
+        "batchName": req.batchName,
+        "processedAt": req.processedAt,
+        "count": len(invoices)
+    }
 
 
 @app.post("/classify")

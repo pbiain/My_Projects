@@ -88,66 +88,49 @@
     },
     {
       "parameters": {
-        "jsCode": "// Gmail API returns URL-safe base64 (- and _ instead of + and /)\n// Anthropic API requires standard base64\nconst urlSafeBase64 = $input.first().json.data;\nconst standardBase64 = urlSafeBase64.replace(/-/g, '+').replace(/_/g, '/');\n\nconst meta = $('Code in JavaScript').first().json;\n\nreturn [{\n  json: {\n    data: standardBase64,\n    pdfName: meta.pdfName,\n    batchName: meta.batchName,\n    processedAt: meta.processedAt\n  }\n}];"
-      },
-      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "name": "Fix Base64 Encoding",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-112, -96]
-    },
-    {
-      "parameters": {
         "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
+        "url": "https://myprojects-production-5bec.up.railway.app/extract",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "x-api-key",
-              "value": "={{ $credentials.anthropicApi.apiKey }}"
-            },
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
-              "name": "content-type",
+              "name": "Content-Type",
               "value": "application/json"
             }
           ]
         },
         "sendBody": true,
-        "contentType": "raw",
-        "body": "={\n  \"model\": \"claude-3-5-sonnet-20241022\",\n  \"max_tokens\": 2000,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"document\",\n          \"source\": {\n            \"type\": \"base64\",\n            \"media_type\": \"application/pdf\",\n            \"data\": \"{{ $json.data }}\"\n          }\n        },\n        {\n          \"type\": \"text\",\n          \"text\": \"Extract all invoice line items from this Tidel service invoice PDF. Return a JSON array where each element represents one invoice with these exact fields: invoice_number, invoice_date, serial_number, branch_number, po_number, ship_name, ship_addr1, ship_city, ship_state, ship_zip, call_number, labor_charge (number), parts_amount (number), shipping_amount (number), subtotal (number), tax_amount (number), total_amount (number), oos_tier1, oos_tier2, comment. Return ONLY the JSON array, no markdown, no preamble.\"\n        }\n      ]\n    }\n  ]\n}",
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "data", "value": "={{ $json.data }}" },
+            { "name": "pdfName", "value": "={{ $('Code in JavaScript').first().json.pdfName }}" },
+            { "name": "batchName", "value": "={{ $('Extract PDF Attachment').first().json.batchName }}" },
+            { "name": "processedAt", "value": "={{ $('Extract PDF Attachment').first().json.processedAt }}" }
+          ]
+        },
         "options": {}
       },
       "id": "f5659f4e-4cbc-4520-af2f-4966506a8685",
-      "name": "Claude — Extract Invoice Data from PDF",
+      "name": "Python — Extract Invoices from PDF",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [112, -96],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "REPLACE_WITH_YOUR_ANTHROPIC_CREDENTIAL_ID",
-          "name": "Anthropic API"
-        }
-      }
+      "position": [-112, -96]
     },
     {
       "parameters": {
-        "jsCode": "// Parse the extracted invoice array from Claude response\nconst response = $input.first().json;\n// Anthropic format: response.content[0].text\nconst content = response.content?.[0]?.text || '';\n\nlet invoices = [];\ntry {\n  const clean = content.replace(/```json|```/g, '').trim();\n  invoices = JSON.parse(clean);\n  if (!Array.isArray(invoices)) invoices = [invoices];\n} catch(e) {\n  throw new Error('Failed to parse invoice JSON from Claude: ' + content.substring(0, 200));\n}\n\nconst batchName = $('Fix Base64 Encoding').first().json.batchName;\nconst processedAt = $('Fix Base64 Encoding').first().json.processedAt;\n\nconsole.log(`Extracted ${invoices.length} invoices from PDF`);\n\nreturn invoices.map((inv, idx) => ({\n  json: {\n    ...inv,\n    index: idx,\n    batchName: batchName,\n    processedAt: processedAt\n  }\n}));"
+        "jsCode": "// Python /extract returns { invoices: [...], batchName, processedAt, count }\nconst response = $input.first().json;\nconst invoices = response.invoices;\nconst batchName = response.batchName;\nconst processedAt = response.processedAt;\n\nif (!invoices || invoices.length === 0) {\n  throw new Error('No invoices extracted from PDF');\n}\n\nconsole.log(`Extracted ${invoices.length} invoices from PDF`);\n\nreturn invoices.map((inv, idx) => ({\n  json: {\n    ...inv,\n    index: idx,\n    batchName: batchName,\n    processedAt: processedAt\n  }\n}));"
       },
       "id": "cfabb64b-c980-47ec-a656-e13282019bc1",
-      "name": "Parse Invoice Array",
+      "name": "Split into Invoice Items",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [336, -96]
+      "position": [112, -96]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://YOUR_APP.railway.app/classify",
+        "url": "https://myprojects-production-5bec.up.railway.app/classify",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -304,15 +287,12 @@
       "main": [[{ "node": "Download pdf bytes", "type": "main", "index": 0 }]]
     },
     "Download pdf bytes": {
-      "main": [[{ "node": "Fix Base64 Encoding", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Python — Extract Invoices from PDF", "type": "main", "index": 0 }]]
     },
-    "Fix Base64 Encoding": {
-      "main": [[{ "node": "Claude — Extract Invoice Data from PDF", "type": "main", "index": 0 }]]
+    "Python — Extract Invoices from PDF": {
+      "main": [[{ "node": "Split into Invoice Items", "type": "main", "index": 0 }]]
     },
-    "Claude — Extract Invoice Data from PDF": {
-      "main": [[{ "node": "Parse Invoice Array", "type": "main", "index": 0 }]]
-    },
-    "Parse Invoice Array": {
+    "Split into Invoice Items": {
       "main": [[{ "node": "VaultGuard MCP — Classify Invoice", "type": "main", "index": 0 }]]
     },
     "VaultGuard MCP — Classify Invoice": {
