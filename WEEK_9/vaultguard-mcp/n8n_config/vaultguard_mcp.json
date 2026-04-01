@@ -1,0 +1,367 @@
+{
+  "name": "VaultGuard — Tidel Invoice Processing Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "sender": "pbiain@gmail.com"
+        },
+        "options": {}
+      },
+      "id": "8ffeb1b5-0462-4aa8-8b01-e0262b39634a",
+      "name": "Gmail — Watch Tidel Invoices",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [-1168, -96],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jDdVVuDB140m2CZo",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst json = item.json;\nconst messageId = json.id;\nconst now = new Date();\n\nif (!messageId) {\n  throw new Error('No message ID found');\n}\n\nreturn [{\n  json: {\n    messageId: messageId,\n    batchName: now.toISOString().slice(2,10).replace(/-/g,'') + '-TIDELSER-MR01',\n    processedAt: now.toISOString()\n  }\n}];"
+      },
+      "id": "fa14d7e5-9ce4-442e-a424-6965628960fc",
+      "name": "Extract PDF Attachment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-944, -96]
+    },
+    {
+      "parameters": {
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.messageId }}?format=full",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-736, -96],
+      "id": "d35cfff6-cef9-4254-bb44-489af6dee59e",
+      "name": "HTTP Request",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jDdVVuDB140m2CZo",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const json = $input.first().json;\n\nconst findAttachment = (parts) => {\n  if (!parts) return null;\n  for (const part of parts) {\n    if (part.mimeType === 'application/pdf' || \n        (part.filename && part.filename.toLowerCase().endsWith('.pdf'))) {\n      return {\n        attachmentId: part.body.attachmentId,\n        filename: part.filename,\n        messageId: json.id\n      };\n    }\n    if (part.parts) {\n      const found = findAttachment(part.parts);\n      if (found) return found;\n    }\n  }\n  return null;\n};\n\nconst attachment = findAttachment(json.payload.parts || []);\n\nif (!attachment) throw new Error('No PDF found in message parts');\n\nconst batchNode = $('Extract PDF Attachment').first().json;\n\nreturn [{\n  json: {\n    messageId: json.id,\n    attachmentId: attachment.attachmentId,\n    pdfName: attachment.filename,\n    batchName: batchNode.batchName,\n    processedAt: batchNode.processedAt\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-528, -96],
+      "id": "eccfd4e6-c348-4adf-8ded-8a503b4f484b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{$json.messageId}}/attachments/{{$json.attachmentId}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "gmailOAuth2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-320, -96],
+      "id": "df050839-6311-475f-b4e1-2a4dea35523b",
+      "name": "Download pdf bytes",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jDdVVuDB140m2CZo",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gmail API returns URL-safe base64 (- and _ instead of + and /)\n// Anthropic API requires standard base64\nconst urlSafeBase64 = $input.first().json.data;\nconst standardBase64 = urlSafeBase64.replace(/-/g, '+').replace(/_/g, '/');\n\nconst meta = $('Code in JavaScript').first().json;\n\nreturn [{\n  json: {\n    data: standardBase64,\n    pdfName: meta.pdfName,\n    batchName: meta.batchName,\n    processedAt: meta.processedAt\n  }\n}];"
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Fix Base64 Encoding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-112, -96]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $credentials.anthropicApi.apiKey }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={\n  \"model\": \"claude-3-5-sonnet-20241022\",\n  \"max_tokens\": 2000,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"document\",\n          \"source\": {\n            \"type\": \"base64\",\n            \"media_type\": \"application/pdf\",\n            \"data\": \"{{ $json.data }}\"\n          }\n        },\n        {\n          \"type\": \"text\",\n          \"text\": \"Extract all invoice line items from this Tidel service invoice PDF. Return a JSON array where each element represents one invoice with these exact fields: invoice_number, invoice_date, serial_number, branch_number, po_number, ship_name, ship_addr1, ship_city, ship_state, ship_zip, call_number, labor_charge (number), parts_amount (number), shipping_amount (number), subtotal (number), tax_amount (number), total_amount (number), oos_tier1, oos_tier2, comment. Return ONLY the JSON array, no markdown, no preamble.\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "f5659f4e-4cbc-4520-af2f-4966506a8685",
+      "name": "Claude — Extract Invoice Data from PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [112, -96],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_ANTHROPIC_CREDENTIAL_ID",
+          "name": "Anthropic API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the extracted invoice array from Claude response\nconst response = $input.first().json;\n// Anthropic format: response.content[0].text\nconst content = response.content?.[0]?.text || '';\n\nlet invoices = [];\ntry {\n  const clean = content.replace(/```json|```/g, '').trim();\n  invoices = JSON.parse(clean);\n  if (!Array.isArray(invoices)) invoices = [invoices];\n} catch(e) {\n  throw new Error('Failed to parse invoice JSON from Claude: ' + content.substring(0, 200));\n}\n\nconst batchName = $('Fix Base64 Encoding').first().json.batchName;\nconst processedAt = $('Fix Base64 Encoding').first().json.processedAt;\n\nconsole.log(`Extracted ${invoices.length} invoices from PDF`);\n\nreturn invoices.map((inv, idx) => ({\n  json: {\n    ...inv,\n    index: idx,\n    batchName: batchName,\n    processedAt: processedAt\n  }\n}));"
+      },
+      "id": "cfabb64b-c980-47ec-a656-e13282019bc1",
+      "name": "Parse Invoice Array",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [336, -96]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_APP.railway.app/classify",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "invoice_number", "value": "={{ $json.invoice_number }}" },
+            { "name": "serial_number", "value": "={{ $json.serial_number }}" },
+            { "name": "labor_charge", "value": "={{ $json.labor_charge }}" },
+            { "name": "parts_amount", "value": "={{ $json.parts_amount }}" },
+            { "name": "total_amount", "value": "={{ $json.total_amount }}" },
+            { "name": "oos_tier1", "value": "={{ $json.oos_tier1 || '' }}" },
+            { "name": "oos_tier2", "value": "={{ $json.oos_tier2 || '' }}" },
+            { "name": "comment", "value": "={{ $json.comment || '' }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e8f7f3ff-e0c2-4cbc-beaa-bb98c9023b3b",
+      "name": "VaultGuard MCP — Classify Invoice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, -96]
+    },
+    {
+      "parameters": {
+        "jsCode": "// VaultGuard MCP server returns classification directly (no choices wrapper)\nconst invoice = $('Parse Invoice Array').item.json;\nconst classification = $input.first().json;\n\n// Build WORKING sheet row\nconst description = `${invoice.serial_number}/${invoice.ship_name}`;\n\nreturn [{\n  json: {\n    // Original invoice fields\n    serial_number:   invoice.serial_number,\n    branch_number:   invoice.branch_number,\n    invoice_number:  invoice.invoice_number,\n    invoice_date:    invoice.invoice_date,\n    total_amount:    invoice.total_amount,\n    item_amount:     invoice.subtotal,\n    po_number:       invoice.po_number,\n    ship_name:       invoice.ship_name,\n    ship_addr1:      invoice.ship_addr1,\n    ship_city:       invoice.ship_city,\n    ship_state:      invoice.ship_state,\n    ship_zip:        invoice.ship_zip,\n    call_number:     invoice.call_number,\n    labor_charge:    invoice.labor_charge,\n    parts_amount:    invoice.parts_amount,\n    shipping_amount: invoice.shipping_amount,\n    subtotal:        invoice.subtotal,\n    tax_amount:      invoice.tax_amount,\n    oos_tier1:       invoice.oos_tier1,\n    oos_tier2:       invoice.oos_tier2,\n    comment:         invoice.comment,\n    // AI classification from VaultGuard MCP\n    bill_customer:   classification.decision,\n    gl_code:         classification.gl_code,\n    ai_confidence:   classification.confidence,\n    ai_reason:       classification.reason,\n    flag_for_review: classification.flag_for_review || false,\n    // Oracle upload fields\n    description:     description,\n    vendor_name:     'TIDEL ENGINEERING',\n    vendor_number:   151176,\n    vendor_site:     'CARROLLTON',\n    company:         '01',\n    lob:             '500',\n    dept:            '00',\n    // Metadata\n    batchName:       invoice.batchName,\n    index:           invoice.index\n  }\n}];"
+      },
+      "id": "5583143c-deb2-474b-acd2-a11176359152",
+      "name": "Merge Classification with Invoice",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [784, -96]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "d2c173a2-e03e-4f02-921a-3d15c20e94dc",
+      "name": "Collect All Classified Invoices",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1008, -96]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate CSV files with 2 sheets: WORKING and ORACLE UPLOAD\n\nconst allInvoices = $input.first().json.data;\nconst batchName = allInvoices[0]?.batchName || 'BATCH';\n\nconst totalAmount = allInvoices.reduce((sum, inv) => sum + (parseFloat(inv.total_amount) || 0), 0);\nconst billYesAmount = allInvoices\n  .filter(inv => inv.bill_customer === 'YES')\n  .reduce((sum, inv) => sum + (parseFloat(inv.subtotal) || 0), 0);\nconst billNoAmount = allInvoices\n  .filter(inv => inv.bill_customer === 'NO')\n  .reduce((sum, inv) => sum + (parseFloat(inv.subtotal) || 0), 0);\nconst flaggedCount = allInvoices.filter(inv => inv.flag_for_review).length;\n\nconst sheet2Headers = [\n  'Serial Number','Branch Number','Invoice','Invoice Date','Total Invoice Amount',\n  'PO','Ship Name','Ship City','Ship State','Call Number',\n  'Labor Charge','Parts Amount','OOS Tier 1','OOS Tier 2','InvoiceComment',\n  'Bill Customer','GL Coding','Description',\n  'AI Confidence','AI Reason','Flag for Review'\n];\n\nconst sheet2Rows = allInvoices.map(inv => [\n  inv.serial_number, inv.branch_number, inv.invoice_number, inv.invoice_date,\n  inv.total_amount, inv.po_number, inv.ship_name, inv.ship_city,\n  inv.ship_state, inv.call_number, inv.labor_charge, inv.parts_amount,\n  inv.oos_tier1, inv.oos_tier2, inv.comment,\n  inv.bill_customer, inv.gl_code, inv.description,\n  inv.ai_confidence, inv.ai_reason, inv.flag_for_review ? 'YES' : ''\n]);\n\nconst sheet3Headers = [\n  'Invoice Type','PO Number','Vendor Name','Vendor Number','Vendor Site',\n  'Invoice Date','Invoice Number','Company','GL Code','Branch',\n  'LOB','Dept','Service Charge','Item','Subtotal','Total Amount',\n  'Description'\n];\n\nconst sheet3Rows = allInvoices\n  .filter(inv => inv.bill_customer === 'YES' || inv.bill_customer === 'NO')\n  .map(inv => [\n    'STANDARD', inv.po_number, 'TIDEL ENGINEERING', 151176, 'CARROLLTON',\n    inv.invoice_date, inv.invoice_number, '01', inv.gl_code, inv.branch_number,\n    '500', '00', inv.labor_charge, inv.subtotal, inv.subtotal, inv.total_amount,\n    inv.description\n  ]);\n\nfunction toCSV(headers, rows) {\n  const escape = v => {\n    const s = String(v === null || v === undefined ? '' : v);\n    return s.includes(',') || s.includes('\"') || s.includes('\\n')\n      ? `\"${s.replace(/\"/g, '\"\"')}\"`\n      : s;\n  };\n  return [headers, ...rows].map(row => row.map(escape).join(',')).join('\\n');\n}\n\nconst workingCSV = toCSV(sheet2Headers, sheet2Rows);\nconst uploadCSV  = toCSV(sheet3Headers, sheet3Rows);\n\nconst summary = {\n  batchName,\n  totalInvoices: allInvoices.length,\n  billClient: allInvoices.filter(i => i.bill_customer === 'YES').length,\n  vaultguardAbsorbs: allInvoices.filter(i => i.bill_customer === 'NO').length,\n  flaggedForReview: flaggedCount,\n  totalAmount: totalAmount.toFixed(2),\n  billYesAmount: billYesAmount.toFixed(2),\n  billNoAmount: billNoAmount.toFixed(2),\n  flaggedInvoices: allInvoices\n    .filter(i => i.flag_for_review)\n    .map(i => `${i.invoice_number} — ${i.ship_name} — $${i.total_amount} — ${i.ai_reason}`)\n};\n\nreturn [{\n  json: summary,\n  binary: {\n    working_sheet: {\n      data: Buffer.from(workingCSV).toString('base64'),\n      mimeType: 'text/csv',\n      fileName: `${batchName}_WORKING.csv`\n    },\n    upload_sheet: {\n      data: Buffer.from(uploadCSV).toString('base64'),\n      mimeType: 'text/csv',\n      fileName: `${batchName}_ORACLE_UPLOAD.csv`\n    }\n  }\n}];"
+      },
+      "id": "5193fae4-3ac8-4928-b5e7-e270d706a5b8",
+      "name": "Generate Working & Upload Sheets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1232, -96]
+    },
+    {
+      "parameters": {
+        "sendTo": "biainpedro0@gmail.com",
+        "subject": "=✅ Tidel Invoice Batch Processed — {{ $json.batchName }} — {{ $json.totalInvoices }} invoices",
+        "emailType": "text",
+        "message": "=Tidel invoice batch has been processed and classified.\n\n=== BATCH SUMMARY ===\nBatch Name:       {{ $json.batchName }}\nTotal Invoices:   {{ $json.totalInvoices }}\nBill to Client:   {{ $json.billClient }} invoices  (${{ $json.billYesAmount }})\nVaultGuard absorbs: {{ $json.vaultguardAbsorbs }} invoices  (${{ $json.billNoAmount }})\nTotal Amount:     ${{ $json.totalAmount }}\n\n=== ACTION REQUIRED ===\n{{ $json.flaggedForReview }} invoice(s) flagged for human review before Oracle upload:\n{{ $json.flaggedInvoices.join('\\n') }}\n\n=== NEXT STEPS ===\n1. Review the WORKING sheet attached — check flagged invoices\n2. Once confirmed, upload the ORACLE_UPLOAD sheet to the Loomis Invoice Bulk Loader WebADI\n3. Verify batch total matches: ${{ $json.totalAmount }}\n\nFiles attached:\n- {{ $json.batchName }}_WORKING.csv\n- {{ $json.batchName }}_ORACLE_UPLOAD.csv\n\nClassified by VaultGuard Maintenance Intelligence Platform.",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              { "property": "working_sheet" },
+              { "property": "upload_sheet" }
+            ]
+          }
+        }
+      },
+      "id": "3cdb9959-f7b6-4dbf-9efe-22f6d175439e",
+      "name": "Email — Send Results to Billing Team",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1456, -208],
+      "webhookId": "9f9fd781-5462-4f0f-819a-3d5b4bfa5e48",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jDdVVuDB140m2CZo",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-flag",
+              "leftValue": "={{ $json.flaggedForReview }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "846256a1-cc22-4683-abbf-5c117b3de823",
+      "name": "Any Flags?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1456, 16]
+    },
+    {
+      "parameters": {
+        "sendTo": "biainpedro0@gmail.com",
+        "subject": "=⚠️ {{ $json.flaggedForReview }} Invoice(s) Need Review — {{ $json.batchName }}",
+        "emailType": "text",
+        "message": "=The following invoices were classified with LOW confidence and require human review before the Oracle upload proceeds:\n\n{{ $json.flaggedInvoices.join('\\n\\n') }}\n\nPlease review these in the WORKING sheet and confirm or correct the billing decision.\n\nBatch: {{ $json.batchName }}\nTotal flagged: {{ $json.flaggedForReview }} of {{ $json.totalInvoices }} invoices",
+        "options": {}
+      },
+      "id": "395eb510-e3a8-489b-9596-a8cabcb2d730",
+      "name": "Email — Urgent Flag Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1680, -64],
+      "webhookId": "22b0cce4-3ed0-4eb5-b5d6-5e71c410e3ea",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jDdVVuDB140m2CZo",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail — Watch Tidel Invoices": {
+      "main": [[{ "node": "Extract PDF Attachment", "type": "main", "index": 0 }]]
+    },
+    "Extract PDF Attachment": {
+      "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]]
+    },
+    "HTTP Request": {
+      "main": [[{ "node": "Code in JavaScript", "type": "main", "index": 0 }]]
+    },
+    "Code in JavaScript": {
+      "main": [[{ "node": "Download pdf bytes", "type": "main", "index": 0 }]]
+    },
+    "Download pdf bytes": {
+      "main": [[{ "node": "Fix Base64 Encoding", "type": "main", "index": 0 }]]
+    },
+    "Fix Base64 Encoding": {
+      "main": [[{ "node": "Claude — Extract Invoice Data from PDF", "type": "main", "index": 0 }]]
+    },
+    "Claude — Extract Invoice Data from PDF": {
+      "main": [[{ "node": "Parse Invoice Array", "type": "main", "index": 0 }]]
+    },
+    "Parse Invoice Array": {
+      "main": [[{ "node": "VaultGuard MCP — Classify Invoice", "type": "main", "index": 0 }]]
+    },
+    "VaultGuard MCP — Classify Invoice": {
+      "main": [[{ "node": "Merge Classification with Invoice", "type": "main", "index": 0 }]]
+    },
+    "Merge Classification with Invoice": {
+      "main": [[{ "node": "Collect All Classified Invoices", "type": "main", "index": 0 }]]
+    },
+    "Collect All Classified Invoices": {
+      "main": [[{ "node": "Generate Working & Upload Sheets", "type": "main", "index": 0 }]]
+    },
+    "Generate Working & Upload Sheets": {
+      "main": [[
+        { "node": "Email — Send Results to Billing Team", "type": "main", "index": 0 },
+        { "node": "Any Flags?", "type": "main", "index": 0 }
+      ]]
+    },
+    "Any Flags?": {
+      "main": [[{ "node": "Email — Urgent Flag Alert", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c7d2957a474b516a1d6064b91ae9aeb5ef52813d1f8ade3bdcacb18e451239fc"
+  },
+  "id": "FiSGFCdDwCKi9Zuy",
+  "tags": [
+    {
+      "updatedAt": "2026-03-31T23:00:12.564Z",
+      "createdAt": "2026-03-31T23:00:12.564Z",
+      "id": "HqIzlmh2BCdDwgSB",
+      "name": "Tidel Invoice Pipeline"
+    },
+    {
+      "updatedAt": "2026-03-31T23:00:12.568Z",
+      "createdAt": "2026-03-31T23:00:12.568Z",
+      "id": "Wmw9nu1cdUnjsJcw",
+      "name": "Production"
+    },
+    {
+      "updatedAt": "2026-03-31T19:00:20.564Z",
+      "createdAt": "2026-03-31T19:00:20.564Z",
+      "id": "aklazbTDRfxZbvzC",
+      "name": "VaultGuard"
+    }
+  ]
+}

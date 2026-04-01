@@ -1,0 +1,47 @@
+[
+  {
+    "invoice": {
+      "invoice_id": "TEST-001",
+      "serial_number": "SV100-12345",
+      "safe_age_yr": 3.5,
+      "labour_charge": 186.0,
+      "parts_cost": 0.0,
+      "total_amount": 186.0,
+      "oos_tier1": "Physical Damage",
+      "oos_tier2": "Broken Screen",
+      "comment": "Customer reported screen was smashed",
+      "current_decision": "UNKNOWN"
+    },
+    "expected_decision": "YES"
+  },
+  {
+    "invoice": {
+      "invoice_id": "TEST-002",
+      "serial_number": "SV200-67890",
+      "safe_age_yr": 5.2,
+      "labour_charge": 186.0,
+      "parts_cost": 45.5,
+      "total_amount": 231.5,
+      "oos_tier1": "Wear and Tear",
+      "oos_tier2": "Validator Spring",
+      "comment": "Validator spring worn out, replaced",
+      "current_decision": "UNKNOWN"
+    },
+    "expected_decision": "NO"
+  },
+  {
+    "invoice": {
+      "invoice_id": "TEST-003",
+      "serial_number": "SV300-11111",
+      "safe_age_yr": 2.1,
+      "labour_charge": 621.0,
+      "parts_cost": 0.0,
+      "total_amount": 621.0,
+      "oos_tier1": "Software Issue",
+      "oos_tier2": "Firmware Update",
+      "comment": "Remote firmware update required",
+      "current_decision": "UNKNOWN"
+    },
+    "expected_decision": "NO"
+  }
+]
