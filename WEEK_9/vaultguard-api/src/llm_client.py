@@ -200,11 +200,10 @@ Classify this invoice."""
 
     async def extract_invoice_data(self, pdf_base64: str, filename: str) -> list[dict]:
         """
-        Extract invoice data from a base64-encoded PDF.
-        Uses pypdf to extract text locally, then sends text to GPT-4o Chat Completions.
-        This avoids context length limits from sending raw PDF bytes.
+        Extract invoice data from an image-based PDF using GPT-4o vision.
+        Uses pymupdf to render each page as a PNG, then sends images to GPT-4o.
 
-        GDPR NOTE: PDF text (including customer PII) is sent to OpenAI here —
+        GDPR NOTE: Page images (including customer PII) are sent to OpenAI here —
         this is the only step where PII leaves the system. All subsequent
         LLM calls (classification) use _redact_pii() first.
 
@@ -217,44 +216,50 @@ Classify this invoice."""
         """
         import base64
         import io
-        from pypdf import PdfReader
+        import fitz  # pymupdf
 
         if not self.openai_client:
             raise ValueError("OpenAI client not configured")
 
-        # Extract text locally — no API size limits
+        # Render each PDF page as a PNG image
         pdf_bytes = base64.b64decode(pdf_base64)
-        reader = PdfReader(io.BytesIO(pdf_bytes))
-        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
-        if not text.strip():
-            raise ValueError("Could not extract text from PDF — it may be image-based")
+        image_contents = []
+        for page in doc:
+            # Render at 150 DPI — enough for OCR, small enough for API
+            mat = fitz.Matrix(150 / 72, 150 / 72)
+            pix = page.get_pixmap(matrix=mat)
+            img_bytes = pix.tobytes("png")
+            img_b64 = base64.b64encode(img_bytes).decode()
+            image_contents.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/png;base64,{img_b64}",
+                    "detail": "high"
+                }
+            })
+
+        doc.close()
+
+        # Add extraction prompt after images
+        image_contents.append({
+            "type": "text",
+            "text": (
+                "Extract all invoice line items from these Tidel service invoice pages. "
+                "Return a JSON array where each element represents one invoice with these exact fields: "
+                "invoice_number, invoice_date, serial_number, branch_number, po_number, "
+                "ship_name, ship_addr1, ship_city, ship_state, ship_zip, call_number, "
+                "labor_charge (number), parts_amount (number), shipping_amount (number), "
+                "subtotal (number), tax_amount (number), total_amount (number), "
+                "oos_tier1, oos_tier2, comment. "
+                "Return ONLY the JSON array, no markdown, no preamble."
+            )
+        })
 
         response = await self.openai_client.chat.completions.create(
             model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a data extraction assistant. Extract structured invoice data "
-                        "from Tidel service invoice text. Return ONLY a JSON array, no markdown, no preamble."
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        "Extract all invoice line items from this Tidel service invoice text. "
-                        "Return a JSON array where each element represents one invoice with these exact fields: "
-                        "invoice_number, invoice_date, serial_number, branch_number, po_number, "
-                        "ship_name, ship_addr1, ship_city, ship_state, ship_zip, call_number, "
-                        "labor_charge (number), parts_amount (number), shipping_amount (number), "
-                        "subtotal (number), tax_amount (number), total_amount (number), "
-                        "oos_tier1, oos_tier2, comment. "
-                        "Return ONLY the JSON array, no markdown, no preamble.\n\n"
-                        f"=== INVOICE TEXT ===\n{text}"
-                    )
-                }
-            ],
+            messages=[{"role": "user", "content": image_contents}],
             temperature=0.1,
             max_tokens=4000
         )
