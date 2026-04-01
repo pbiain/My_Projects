@@ -1,0 +1,245 @@
+{
+  "name": "VaultGuard Billing Validation POC",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "billing-validation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1a2b3c4d-0001-0001-0001-000000000001",
+      "name": "Webhook — Invoice Input",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "vaultguard-billing-poc"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Input normalisation ──────────────────────────────────────────\n// Accepts either a single invoice object or an array\n// Normalises field names for downstream LLM prompt\n\nconst body = $input.first().json.body || $input.first().json;\nconst invoices = Array.isArray(body) ? body : [body];\n\nconst normalised = invoices.map((inv, idx) => {\n  return {\n    index: idx,\n    invoice_id:    inv.invoice_id    || inv.PO            || `INV-${idx+1}`,\n    serial_number: inv.serial_number || inv['Serial Number'] || 'UNKNOWN',\n    safe_age_yr:   inv.safe_age_yr   || inv['Safe manufacture year'] || null,\n    labour_charge: inv.labour_charge || inv.Lineitem_1_UnitPrice || 0,\n    parts_cost:    inv.parts_cost    || inv.Lineitem_2_UnitPrice || 0,\n    total_amount:  inv.total_amount  || inv['Total Invoice Amount'] || 0,\n    oos_tier1:     inv.oos_tier1     || inv['OOS Tier 1 Category'] || '',\n    oos_tier2:     inv.oos_tier2     || inv['OOS Tier 2 Category'] || '',\n    comment:       inv.comment       || inv.InvoiceComment || '',\n    current_decision: inv.current_decision || inv['Bill Customer'] || 'UNKNOWN'\n  };\n});\n\nreturn normalised.map(item => ({ json: item }));"
+      },
+      "id": "1a2b3c4d-0002-0002-0002-000000000002",
+      "name": "Normalise Invoice Fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a billing validation AI for VaultGuard Inc., a cash management company. You analyse smart safe maintenance invoices to determine whether the cost should be billed to the client (YES) or absorbed by VaultGuard (NO).\n\nDECISION RULES (from White Glove Service Contract):\n\nBILL CLIENT (YES) when the issue is caused by:\n- Abuse, misuse, vandalism, or negligence\n- Liquid spillage onto equipment\n- Physical damage (broken/cracked screen, bent components)\n- Foreign objects in bill acceptors (coins, debris)\n- Infestation (insects, rodents)\n- Safe burglary or robbery attempt damage\n- Customer refused access or cancelled after dispatch\n\nABSORB (NO) when the issue is:\n- Normal wear and tear (validator spring/component failure)\n- Communications / connectivity / modem failure\n- Software or firmware issues\n- Network or phone line problems\n- User programming errors\n- No problem found on site\n- Printer jams or paper loading\n- Equipment resets\n\nIMPORTANT: The labour charge tells you the call type:\n- $186 or $189 = standard OOS rate (Zone 1-3)\n- $621 or $630 = remote OOS rate (Zone 4)\nBoth indicate the visit was classified as Out of Scope by the technician.\n\nRespond ONLY with valid JSON in this exact format, no preamble, no markdown:\n{\n  \"decision\": \"YES\" or \"NO\",\n  \"confidence\": \"HIGH\", \"MEDIUM\", or \"LOW\",\n  \"reason\": \"one sentence explaining the decision\",\n  \"key_signal\": \"the specific word or phrase that drove the decision\",\n  \"flag_for_review\": true or false\n}\n\nSet flag_for_review to true when:\n- Confidence is LOW\n- The comment is empty or ambiguous\n- The OOS tier categories are missing\n- There is a conflict between the comment and the OOS categories"
+            },
+            {
+              "role": "user",
+              "content": "=== INVOICE TO CLASSIFY ===\n\nInvoice ID:      {{ $json.invoice_id }}\nSerial Number:   {{ $json.serial_number }}\nSafe Age:        {{ $json.safe_age_yr ? $json.safe_age_yr + ' years' : 'Unknown' }}\nLabour Charge:   ${{ $json.labour_charge }}\nParts Cost:      ${{ $json.parts_cost }}\nTotal Amount:    ${{ $json.total_amount }}\nOOS Tier 1:      {{ $json.oos_tier1 || 'Not provided' }}\nOOS Tier 2:      {{ $json.oos_tier2 || 'Not provided' }}\nTechnician Note: {{ $json.comment || 'No comment provided' }}\nCurrent Decision: {{ $json.current_decision }}\n\nClassify this invoice."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.1,
+          "maxTokens": 300
+        }
+      },
+      "id": "1a2b3c4d-0003-0003-0003-000000000003",
+      "name": "GPT-4o — Billing Classifier",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [680, 300],
+      "credentials": {
+        "openAiApi": {
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Parse LLM response and merge with invoice data ───────────────\nconst invoice = $('Normalise Invoice Fields').item.json;\nconst rawResponse = $input.first().json.message?.content || \n                    $input.first().json.choices?.[0]?.message?.content || '';\n\nlet aiResult = {};\ntry {\n  // Strip any markdown fences if present\n  const clean = rawResponse.replace(/```json|```/g, '').trim();\n  aiResult = JSON.parse(clean);\n} catch(e) {\n  aiResult = {\n    decision: 'UNCLEAR',\n    confidence: 'LOW',\n    reason: 'Could not parse AI response: ' + rawResponse.substring(0, 100),\n    key_signal: 'PARSE_ERROR',\n    flag_for_review: true\n  };\n}\n\n// Determine if AI agrees with current human decision\nconst humanDecision = invoice.current_decision?.toUpperCase();\nconst aiDecision = aiResult.decision?.toUpperCase();\nconst agrees = humanDecision === 'UNKNOWN' ? null : (humanDecision === aiDecision);\n\n// Financial impact of disagreement\nconst amount = parseFloat(invoice.total_amount) || 0;\nlet financialImpact = 0;\nlet impactType = '';\n\nif (agrees === false) {\n  financialImpact = amount;\n  if (humanDecision === 'YES' && aiDecision === 'NO') {\n    impactType = 'OVER_BILLING';\n  } else if (humanDecision === 'NO' && aiDecision === 'YES') {\n    impactType = 'UNDER_BILLING';\n  }\n}\n\nreturn [{\n  json: {\n    // Original invoice\n    invoice_id:      invoice.invoice_id,\n    serial_number:   invoice.serial_number,\n    safe_age_yr:     invoice.safe_age_yr,\n    total_amount:    amount,\n    oos_tier1:       invoice.oos_tier1,\n    oos_tier2:       invoice.oos_tier2,\n    human_decision:  humanDecision,\n    // AI result\n    ai_decision:     aiDecision,\n    ai_confidence:   aiResult.confidence,\n    ai_reason:       aiResult.reason,\n    ai_key_signal:   aiResult.key_signal,\n    flag_for_review: aiResult.flag_for_review || false,\n    // Agreement analysis\n    agrees:          agrees,\n    impact_type:     impactType,\n    financial_impact: financialImpact,\n    // Metadata\n    processed_at:    new Date().toISOString()\n  }\n}];"
+      },
+      "id": "1a2b3c4d-0004-0004-0004-000000000004",
+      "name": "Parse & Enrich Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-001",
+              "leftValue": "={{ $json.flag_for_review }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "1a2b3c4d-0005-0005-0005-000000000005",
+      "name": "Needs Human Review?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-002",
+              "leftValue": "={{ $json.agrees }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "1a2b3c4d-0006-0006-0006-000000000006",
+      "name": "Disagreement?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 520]
+    },
+    {
+      "parameters": {
+        "sendTo": "billing-alerts@vaultguard.com",
+        "subject": "=🔍 Review Required — Invoice {{ $json.invoice_id }} ({{ $json.ai_confidence }} confidence)",
+        "emailType": "text",
+        "message": "=Invoice {{ $json.invoice_id }} has been flagged for human review.\n\nSafe Serial:    {{ $json.serial_number }}\nSafe Age:       {{ $json.safe_age_yr }} years\nAmount:         ${{ $json.total_amount }}\n\nAI Decision:    {{ $json.ai_decision }}\nConfidence:     {{ $json.ai_confidence }}\nReason:         {{ $json.ai_reason }}\nKey Signal:     {{ $json.ai_key_signal }}\n\nHuman Decision: {{ $json.human_decision }}\nAgreement:      {{ $json.agrees === null ? 'N/A' : $json.agrees ? 'YES' : 'NO — DISCREPANCY' }}\n\nOOS Tier 1:     {{ $json.oos_tier1 || 'Not provided' }}\nOOS Tier 2:     {{ $json.oos_tier2 || 'Not provided' }}\n\nAction required: Please review this invoice in the billing system and confirm the correct decision.\n\nProcessed: {{ $json.processed_at }}",
+        "options": {}
+      },
+      "id": "1a2b3c4d-0007-0007-0007-000000000007",
+      "name": "Email — Flag for Review",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1340, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "billing-alerts@vaultguard.com",
+        "subject": "=⚠️ Billing Discrepancy — Invoice {{ $json.invoice_id }} — {{ $json.impact_type }} ${{ $json.financial_impact }}",
+        "emailType": "text",
+        "message": "=A billing discrepancy has been detected for invoice {{ $json.invoice_id }}.\n\nDISCREPANCY TYPE: {{ $json.impact_type }}\nFinancial Impact: ${{ $json.financial_impact }}\n\nSafe Serial:    {{ $json.serial_number }}\nSafe Age:       {{ $json.safe_age_yr }} years\nTotal Amount:   ${{ $json.total_amount }}\n\nHuman Decision: {{ $json.human_decision }}\nAI Decision:    {{ $json.ai_decision }}\n\nAI Reasoning:   {{ $json.ai_reason }}\nKey Signal:     {{ $json.ai_key_signal }}\n\nOOS Tier 1:     {{ $json.oos_tier1 }}\nOOS Tier 2:     {{ $json.oos_tier2 }}\n\n{{ $json.impact_type === 'OVER_BILLING' ? 'ACTION: Client may have been incorrectly charged. Review and issue credit note if confirmed.' : 'ACTION: VaultGuard may have absorbed a cost that should be billed to the client. Review and re-bill if confirmed.' }}\n\nProcessed: {{ $json.processed_at }}",
+        "options": {}
+      },
+      "id": "1a2b3c4d-0008-0008-0008-000000000008",
+      "name": "Email — Discrepancy Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1340, 540],
+      "credentials": {
+        "gmailOAuth2": {
+          "name": "Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build clean response payload for the webhook caller\nconst result = $input.first().json;\n\nreturn [{\n  json: {\n    status: 'processed',\n    invoice_id:     result.invoice_id,\n    ai_decision:    result.ai_decision,\n    ai_confidence:  result.ai_confidence,\n    ai_reason:      result.ai_reason,\n    flag_for_review: result.flag_for_review,\n    agrees_with_human: result.agrees,\n    impact_type:    result.impact_type || null,\n    financial_impact: result.financial_impact || 0,\n    processed_at:   result.processed_at\n  }\n}];"
+      },
+      "id": "1a2b3c4d-0009-0009-0009-000000000009",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 380]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "1a2b3c4d-0010-0010-0010-000000000010",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1780, 380]
+    }
+  ],
+  "connections": {
+    "Webhook — Invoice Input": {
+      "main": [[{"node": "Normalise Invoice Fields", "type": "main", "index": 0}]]
+    },
+    "Normalise Invoice Fields": {
+      "main": [[{"node": "GPT-4o — Billing Classifier", "type": "main", "index": 0}]]
+    },
+    "GPT-4o — Billing Classifier": {
+      "main": [[{"node": "Parse & Enrich Result", "type": "main", "index": 0}]]
+    },
+    "Parse & Enrich Result": {
+      "main": [[
+        {"node": "Needs Human Review?", "type": "main", "index": 0},
+        {"node": "Disagreement?", "type": "main", "index": 0},
+        {"node": "Build Response", "type": "main", "index": 0}
+      ]]
+    },
+    "Needs Human Review?": {
+      "main": [
+        [{"node": "Email — Flag for Review", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Disagreement?": {
+      "main": [
+        [{"node": "Email — Discrepancy Alert", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Email — Flag for Review": {
+      "main": [[{"node": "Build Response", "type": "main", "index": 0}]]
+    },
+    "Email — Discrepancy Alert": {
+      "main": [[{"node": "Build Response", "type": "main", "index": 0}]]
+    },
+    "Build Response": {
+      "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "vaultguard-poc"
+  },
+  "tags": [
+    {"name": "VaultGuard", "createdAt": "2026-03-31"},
+    {"name": "POC", "createdAt": "2026-03-31"},
+    {"name": "Billing Validation", "createdAt": "2026-03-31"}
+  ]
+}
