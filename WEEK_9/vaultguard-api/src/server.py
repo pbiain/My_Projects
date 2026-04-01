@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-VaultGuard MCP Server - AI-powered maintenance intelligence platform
+VaultGuard API Server - AI-powered maintenance intelligence platform
 """
 
 import asyncio
@@ -40,7 +40,7 @@ class BillingDecision(BaseModel):
 
 
 # Initialize MCP server
-app = FastMCP("VaultGuard MCP", description="AI-powered smart safe maintenance billing validation")
+app = FastMCP("VaultGuard API", description="AI-powered smart safe maintenance billing validation")
 
 # Initialize clients
 llm_client = LLMClient()
@@ -174,7 +174,7 @@ def main():
     """Main entry point"""
     import argparse
 
-    parser = argparse.ArgumentParser(description="VaultGuard MCP Server")
+    parser = argparse.ArgumentParser(description="VaultGuard API Server")
     parser.add_argument("--transport", choices=["stdio", "sse"], default="stdio",
                        help="Transport protocol to use")
     parser.add_argument("--port", type=int, default=8000,

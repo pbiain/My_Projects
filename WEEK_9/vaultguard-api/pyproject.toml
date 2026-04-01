@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "vaultguard-mcp"
+name = "vaultguard-api"
 version = "0.1.0"
 description = "AI-powered maintenance intelligence platform for VaultGuard smart safe billing validation"
 authors = [
@@ -26,7 +26,7 @@ dependencies = [
 requires-python = ">=3.9"
 
 [project.scripts]
-vaultguard-mcp = "src.mcp_server:main"
+vaultguard-server = "src.server:main"
 vaultguard-api = "src.api_server:main"
 
 [tool.hatch.build.targets.wheel]

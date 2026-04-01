@@ -34,8 +34,8 @@ class ExtractRequest(BaseModel):
 
 
 class ClassifyRequest(BaseModel):
-    """Accepts both MCP field names and n8n workflow field names"""
-    # Standard MCP fields
+    """Accepts both standard API field names and n8n workflow field names"""
+    # Standard API fields
     invoice_id: Optional[str] = None
     serial_number: Optional[str] = None
     safe_age_yr: Optional[float] = None

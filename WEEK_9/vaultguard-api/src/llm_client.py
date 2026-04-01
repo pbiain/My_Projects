@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LLM Client for VaultGuard MCP Server
+LLM Client for VaultGuard API Server
 """
 
 import os

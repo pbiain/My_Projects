@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Google Sheets Client for VaultGuard MCP Server
+Google Sheets Client for VaultGuard API Server
 """
 
 import os

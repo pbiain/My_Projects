@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Evaluation and testing utilities for VaultGuard MCP Server
+Evaluation and testing utilities for VaultGuard API Server
 """
 
 import json

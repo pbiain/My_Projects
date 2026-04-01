@@ -157,7 +157,7 @@
         "options": {}
       },
       "id": "e8f7f3ff-e0c2-4cbc-beaa-bb98c9023b3b",
-      "name": "VaultGuard MCP — Classify Invoice",
+      "name": "VaultGuard API — Classify Invoice",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [560, -96]
@@ -293,9 +293,9 @@
       "main": [[{ "node": "Split into Invoice Items", "type": "main", "index": 0 }]]
     },
     "Split into Invoice Items": {
-      "main": [[{ "node": "VaultGuard MCP — Classify Invoice", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "VaultGuard API — Classify Invoice", "type": "main", "index": 0 }]]
     },
-    "VaultGuard MCP — Classify Invoice": {
+    "VaultGuard API — Classify Invoice": {
       "main": [[{ "node": "Merge Classification with Invoice", "type": "main", "index": 0 }]]
     },
     "Merge Classification with Invoice": {

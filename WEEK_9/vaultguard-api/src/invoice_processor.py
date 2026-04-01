@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Invoice Processor for VaultGuard MCP Server
+Invoice Processor for VaultGuard API Server
 """
 
 from typing import Dict, Any
