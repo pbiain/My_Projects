@@ -175,7 +175,8 @@ Classify this invoice."""
 
     async def extract_invoice_data(self, pdf_base64: str, filename: str) -> list[dict]:
         """
-        Extract invoice data from a base64-encoded PDF using the OpenAI Responses API.
+        Extract invoice data from a base64-encoded PDF.
+        Uploads to OpenAI Files API first to avoid context length limits.
 
         Args:
             pdf_base64: Standard base64-encoded PDF content
@@ -184,37 +185,54 @@ Classify this invoice."""
         Returns:
             List of invoice dictionaries extracted from the PDF
         """
+        import base64
+        import io
+
         if not self.openai_client:
             raise ValueError("OpenAI client not configured")
 
-        response = await self.openai_client.responses.create(
-            model="gpt-4o",
-            input=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "input_file",
-                            "filename": filename,
-                            "file_data": f"data:application/pdf;base64,{pdf_base64}"
-                        },
-                        {
-                            "type": "input_text",
-                            "text": (
-                                "Extract all invoice line items from this Tidel service invoice PDF. "
-                                "Return a JSON array where each element represents one invoice with these exact fields: "
-                                "invoice_number, invoice_date, serial_number, branch_number, po_number, "
-                                "ship_name, ship_addr1, ship_city, ship_state, ship_zip, call_number, "
-                                "labor_charge (number), parts_amount (number), shipping_amount (number), "
-                                "subtotal (number), tax_amount (number), total_amount (number), "
-                                "oos_tier1, oos_tier2, comment. "
-                                "Return ONLY the JSON array, no markdown, no preamble."
-                            )
-                        }
-                    ]
-                }
-            ]
+        # Upload PDF to OpenAI Files API to avoid inline base64 context limit
+        pdf_bytes = base64.b64decode(pdf_base64)
+        file_obj = io.BytesIO(pdf_bytes)
+        file_obj.name = filename
+
+        uploaded = await self.openai_client.files.create(
+            file=(filename, file_obj, "application/pdf"),
+            purpose="assistants"
         )
+        file_id = uploaded.id
+
+        try:
+            response = await self.openai_client.responses.create(
+                model="gpt-4o",
+                input=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "input_file",
+                                "file_id": file_id
+                            },
+                            {
+                                "type": "input_text",
+                                "text": (
+                                    "Extract all invoice line items from this Tidel service invoice PDF. "
+                                    "Return a JSON array where each element represents one invoice with these exact fields: "
+                                    "invoice_number, invoice_date, serial_number, branch_number, po_number, "
+                                    "ship_name, ship_addr1, ship_city, ship_state, ship_zip, call_number, "
+                                    "labor_charge (number), parts_amount (number), shipping_amount (number), "
+                                    "subtotal (number), tax_amount (number), total_amount (number), "
+                                    "oos_tier1, oos_tier2, comment. "
+                                    "Return ONLY the JSON array, no markdown, no preamble."
+                                )
+                            }
+                        ]
+                    }
+                ]
+            )
+        finally:
+            # Clean up uploaded file to avoid storage buildup
+            await self.openai_client.files.delete(file_id)
 
         content = response.output[0].content[0].text
         clean = content.replace("```json", "").replace("```", "").strip()
