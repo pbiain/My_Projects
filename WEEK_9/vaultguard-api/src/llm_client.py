@@ -7,7 +7,8 @@ import os
 from typing import Optional
 
 from openai import AsyncOpenAI
-from langsmith import Client as LangSmithClient
+from langsmith import Client as LangSmithClient, traceable
+from langsmith.wrappers import wrap_openai
 import json
 
 
@@ -17,7 +18,8 @@ class LLMClient:
     def __init__(self):
         api_key = os.getenv("OPENAI_API_KEY")
         if api_key and api_key != "your_openai_api_key_here":
-            self.openai_client = AsyncOpenAI(api_key=api_key)
+            # wrap_openai automatically traces all calls to LangSmith
+            self.openai_client = wrap_openai(AsyncOpenAI(api_key=api_key))
         else:
             self.openai_client = None
 
@@ -25,6 +27,8 @@ class LLMClient:
         langsmith_key = os.getenv("LANGCHAIN_API_KEY")
         if langsmith_key and langsmith_key != "your_langchain_api_key_here":
             self.langsmith_client = LangSmithClient(api_key=langsmith_key)
+            os.environ["LANGCHAIN_TRACING_V2"] = "true"
+            os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "vaultguard-billing")
         else:
             self.langsmith_client = None
 
@@ -50,6 +54,7 @@ class LLMClient:
                 redacted[field] = token
         return redacted
 
+    @traceable(name="classify_invoice", run_type="llm")
     async def classify_invoice(self, invoice_data: dict) -> dict:
         """
         Classify an invoice using GPT-4o
