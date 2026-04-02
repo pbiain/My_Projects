@@ -254,7 +254,7 @@ Classify this invoice."""
         image_contents.append({
             "type": "text",
             "text": (
-                "Extract all invoice line items from these Tidel service invoice pages. "
+                "Extract all invoice line items from these SafeCore service invoice pages. "
                 "Return a JSON array where each element represents one invoice with these exact fields: "
                 "invoice_number, invoice_date, serial_number, branch_number, po_number, "
                 "ship_name, ship_addr1, ship_city, ship_state, ship_zip, call_number, "

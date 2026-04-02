@@ -13,7 +13,7 @@ Use Case Definition Document · IronHack AI Bootcamp Capstone · March 2026
 |                                                                                                                                                                                                         |
 | Solution: An AI-powered maintenance intelligence platform combining predictive failure scoring, automated billing validation, real-time fleet risk dashboards, and contractor accountability workflows. |
 |                                                                                                                                                                                                         |
-| Engagement type: External AI consulting · Primary contact: Alex Navarro, VP of Product                                                                                                              |
+| Engagement type: External AI consulting · Primary contact: VP of Product                                                                                                              |
 +---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
 +-------------------------+------------------------+-----------------------+--------------------------+
@@ -40,7 +40,7 @@ Use Case Definition Document · IronHack AI Bootcamp Capstone · March 2026
 
   **Critical context**   SafeCore Systems acquired by ArmorGroup (direct VaultGuard competitor) via NexCash Technologies in February 2022 for \~C\$900M
 
-  **Primary contact**    Alex Navarro --- VP of Product
+  **Primary contact**    VP of Product
 
   **Engagement start**   March 2026 · Friday deliverable deadline
   ---------------------- ---------------------------------------------------------------------------------------------------
@@ -129,7 +129,7 @@ The proposed solution is an AI-powered maintenance intelligence platform with fo
   --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   **Role**               **Name / dept**         **Primary interest**                                                                                      **Impact**
   ---------------------- ----------------------- --------------------------------------------------------------------------------------------------------- -----------------
-  **VP of Product**      Alex Navarro        Understand true cost of maintenance, validate billing accuracy, assess NexCash Technologies/ArmorGroup strategic risk   **HIGH**
+  **VP of Product**      VP of Product        Understand true cost of maintenance, validate billing accuracy, assess NexCash Technologies/ArmorGroup strategic risk   **HIGH**
 
   **Operations**         Field Operations Team   Reduce service call volume, improve contractor quality, receive early warning on at-risk safes            **HIGH**
 
