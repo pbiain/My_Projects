@@ -1,0 +1,32 @@
+# VaultGuard API — Python dependencies
+# Install with: pip install -r requirements.txt
+
+# Web server
+fastapi>=0.110.0
+uvicorn>=0.29.0
+
+# AI / LLM
+openai>=1.0.0
+langsmith>=0.1.0
+
+# PDF processing (renders image-based PDFs to PNG for GPT-4o vision)
+pymupdf>=1.24.0
+pypdf>=4.0.0
+
+# Data validation
+pydantic>=2.0.0
+
+# HTTP client
+httpx>=0.25.0
+
+# Google / Gmail API (for local testing with Gmail)
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.1.0
+google-api-python-client>=2.0.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# MCP server (optional — not used in production pipeline)
+mcp>=1.0.0
+fastmcp>=0.9.0
