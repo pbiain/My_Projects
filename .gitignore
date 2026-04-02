@@ -1,1 +1,8 @@
 .claude/
+
+# Sensitive invoice PDFs — never commit real client data
+WEEK_9/vaultguard-api/n8n_config/*.pdf
+WEEK_9/**/*.pdf
+
+# Tableau temp files
+WEEK_7/Day_4/dashboard/~*.twbr
