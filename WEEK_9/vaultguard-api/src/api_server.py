@@ -102,53 +102,52 @@ async def classify_invoice(req: ClassifyRequest):
     }
 
     # Auto-log to LangSmith when we have a known human decision to compare against
-    human_decision = req.current_decision or "UNKNOWN"
+    human_decision = (req.current_decision or "UNKNOWN").strip().upper()
     if human_decision in ("YES", "NO") and llm_client.langsmith_client:
-        asyncio.create_task(_log_to_langsmith(invoice, result, human_decision))
+        try:
+            _log_to_langsmith(invoice, result, human_decision)
+        except Exception as e:
+            print(f"LangSmith logging error: {e}")
+    else:
+        print(f"Skipping LangSmith log — human_decision={human_decision!r}, langsmith_client={llm_client.langsmith_client is not None}")
 
     return result
 
 
-async def _log_to_langsmith(invoice: InvoiceData, ai_result: dict, human_decision: str):
-    """
-    Log a real invoice classification to LangSmith as a labelled example.
-    Runs in background so it never slows down the API response.
-    Compares AI decision against the existing human biller decision (current_decision).
-    """
-    try:
-        dataset_name = "VaultGuard — Real Invoice Evaluations"
-        ls = llm_client.langsmith_client
+def _log_to_langsmith(invoice: InvoiceData, ai_result: dict, human_decision: str):
+    """Log a real invoice classification to LangSmith as a labelled example."""
+    dataset_name = "VaultGuard — Real Invoice Evaluations"
+    ls = llm_client.langsmith_client
 
-        if not ls.has_dataset(dataset_name=dataset_name):
-            ls.create_dataset(
-                dataset_name=dataset_name,
-                description="Live invoice classifications logged automatically — AI vs human biller"
-            )
-
-        dataset = ls.read_dataset(dataset_name=dataset_name)
-
-        ls.create_examples(
-            inputs=[{
-                "invoice_id":    invoice.invoice_id,
-                "serial_number": invoice.serial_number,
-                "labour_charge": invoice.labour_charge,
-                "parts_cost":    invoice.parts_cost,
-                "total_amount":  invoice.total_amount,
-                "oos_tier1":     invoice.oos_tier1,
-                "oos_tier2":     invoice.oos_tier2,
-                "comment":       invoice.comment,
-            }],
-            outputs=[{
-                "expected_decision": human_decision,
-                "ai_decision":       ai_result["decision"],
-                "ai_confidence":     ai_result["confidence"],
-                "ai_reason":         ai_result["reason"],
-                "match":             human_decision == ai_result["decision"],
-            }],
-            dataset_id=dataset.id
+    if not ls.has_dataset(dataset_name=dataset_name):
+        ls.create_dataset(
+            dataset_name=dataset_name,
+            description="Live invoice classifications — AI vs human biller"
         )
-    except Exception:
-        pass  # Never let logging errors affect the API response
+
+    dataset = ls.read_dataset(dataset_name=dataset_name)
+
+    ls.create_examples(
+        inputs=[{
+            "invoice_id":    invoice.invoice_id,
+            "serial_number": invoice.serial_number,
+            "labour_charge": invoice.labour_charge,
+            "parts_cost":    invoice.parts_cost,
+            "total_amount":  invoice.total_amount,
+            "oos_tier1":     invoice.oos_tier1,
+            "oos_tier2":     invoice.oos_tier2,
+            "comment":       invoice.comment,
+        }],
+        outputs=[{
+            "expected_decision": human_decision,
+            "ai_decision":       ai_result["decision"],
+            "ai_confidence":     ai_result["confidence"],
+            "ai_reason":         ai_result["reason"],
+            "match":             human_decision == ai_result["decision"],
+        }],
+        dataset_id=dataset.id
+    )
+    print(f"Logged to LangSmith: {invoice.invoice_id} | human={human_decision} | ai={ai_result['decision']}")
 
 
 @app.get("/health")
