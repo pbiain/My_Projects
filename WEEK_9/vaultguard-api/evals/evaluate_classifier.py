@@ -176,26 +176,36 @@ def classify_invoice_sync(inputs: dict) -> dict:
 
 # ── Main ──────────────────────────────────────────────────────────────────
 
+REAL_DATASET = "VaultGuard — Real Invoice Evaluations"
+LABELLED_DATASET = "VaultGuard Billing Classifier — Labelled"
+
+
 def main():
     ls_client = Client()
-    dataset_name = "VaultGuard Billing Classifier — Labelled"
 
-    # Create or update dataset in LangSmith
-    if not ls_client.has_dataset(dataset_name=dataset_name):
-        dataset = ls_client.create_dataset(
-            dataset_name=dataset_name,
-            description="Labelled invoice examples for billing classification evaluation"
-        )
-        ls_client.create_examples(
-            inputs=[{k: v for k, v in ex.items()
-                     if k not in ("expected_decision", "reason")} for ex in EXAMPLES],
-            outputs=[{"expected_decision": ex["expected_decision"],
-                      "reason": ex["reason"]} for ex in EXAMPLES],
-            dataset_id=dataset.id
-        )
-        print(f"Created dataset with {len(EXAMPLES)} examples")
-    else:
-        print(f"Using existing dataset: {dataset_name}")
+    # Use real dataset if it exists and has examples, otherwise fall back to labelled
+    use_real = ls_client.has_dataset(dataset_name=REAL_DATASET)
+    if use_real:
+        examples = list(ls_client.list_examples(dataset_name=REAL_DATASET))
+        use_real = len(examples) > 0
+
+    dataset_name = REAL_DATASET if use_real else LABELLED_DATASET
+    print(f"Using dataset: {dataset_name}")
+
+    if dataset_name == LABELLED_DATASET:
+        if not ls_client.has_dataset(dataset_name=LABELLED_DATASET):
+            dataset = ls_client.create_dataset(
+                dataset_name=LABELLED_DATASET,
+                description="Labelled invoice examples for billing classification evaluation"
+            )
+            ls_client.create_examples(
+                inputs=[{k: v for k, v in ex.items()
+                         if k not in ("expected_decision", "reason")} for ex in EXAMPLES],
+                outputs=[{"expected_decision": ex["expected_decision"],
+                          "reason": ex["reason"]} for ex in EXAMPLES],
+                dataset_id=dataset.id
+            )
+            print(f"Created labelled dataset with {len(EXAMPLES)} examples")
 
     # Run evaluation
     results = evaluate(
@@ -207,12 +217,11 @@ def main():
     )
 
     # Print summary
-    print("\n=== EVALUATION RESULTS ===")
-    correct = sum(1 for r in results for m in r.get("evaluation_results", {}).get("results", [])
-                  if m.key == "decision_correct" and m.score == 1)
-    total = len(EXAMPLES)
-    print(f"Decision accuracy: {correct}/{total} ({100*correct/total:.1f}%)")
-    print(f"\nFull results in LangSmith: https://smith.langchain.com")
+    total = len(list(results))
+    print(f"\n=== EVALUATION RESULTS ===")
+    print(f"Dataset: {dataset_name}")
+    print(f"Evaluated: {total} invoices")
+    print(f"\nFull results in LangSmith: smith.langchain.com")
 
 
 if __name__ == "__main__":

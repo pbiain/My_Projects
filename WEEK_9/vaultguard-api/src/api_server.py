@@ -4,6 +4,7 @@ REST API Server for VaultGuard — n8n integration endpoint
 """
 
 import os
+import asyncio
 from typing import Optional
 
 import uvicorn
@@ -91,7 +92,7 @@ async def classify_invoice(req: ClassifyRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Classification failed: {str(e)}")
 
-    return {
+    result = {
         "decision": decision.decision,
         "gl_code": GL_CODE_YES if decision.decision == "YES" else GL_CODE_NO,
         "confidence": decision.confidence,
@@ -99,6 +100,55 @@ async def classify_invoice(req: ClassifyRequest):
         "key_signal": decision.key_signal,
         "flag_for_review": decision.flag_for_review,
     }
+
+    # Auto-log to LangSmith when we have a known human decision to compare against
+    human_decision = req.current_decision or "UNKNOWN"
+    if human_decision in ("YES", "NO") and llm_client.langsmith_client:
+        asyncio.create_task(_log_to_langsmith(invoice, result, human_decision))
+
+    return result
+
+
+async def _log_to_langsmith(invoice: InvoiceData, ai_result: dict, human_decision: str):
+    """
+    Log a real invoice classification to LangSmith as a labelled example.
+    Runs in background so it never slows down the API response.
+    Compares AI decision against the existing human biller decision (current_decision).
+    """
+    try:
+        dataset_name = "VaultGuard — Real Invoice Evaluations"
+        ls = llm_client.langsmith_client
+
+        if not ls.has_dataset(dataset_name=dataset_name):
+            ls.create_dataset(
+                dataset_name=dataset_name,
+                description="Live invoice classifications logged automatically — AI vs human biller"
+            )
+
+        dataset = ls.read_dataset(dataset_name=dataset_name)
+
+        ls.create_examples(
+            inputs=[{
+                "invoice_id":    invoice.invoice_id,
+                "serial_number": invoice.serial_number,
+                "labour_charge": invoice.labour_charge,
+                "parts_cost":    invoice.parts_cost,
+                "total_amount":  invoice.total_amount,
+                "oos_tier1":     invoice.oos_tier1,
+                "oos_tier2":     invoice.oos_tier2,
+                "comment":       invoice.comment,
+            }],
+            outputs=[{
+                "expected_decision": human_decision,
+                "ai_decision":       ai_result["decision"],
+                "ai_confidence":     ai_result["confidence"],
+                "ai_reason":         ai_result["reason"],
+                "match":             human_decision == ai_result["decision"],
+            }],
+            dataset_id=dataset.id
+        )
+    except Exception:
+        pass  # Never let logging errors affect the API response
 
 
 @app.get("/health")
