@@ -101,6 +101,27 @@ async def classify_invoice(req: ClassifyRequest):
         "flag_for_review": decision.flag_for_review,
     }
 
+    # Judge LLM — independently verifies the classifier's decision
+    invoice_dict = {
+        "oos_tier1": invoice.oos_tier1,
+        "oos_tier2": invoice.oos_tier2,
+        "comment": invoice.comment,
+        "labour_charge": invoice.labour_charge,
+        "total_amount": invoice.total_amount,
+    }
+    try:
+        judge = await llm_client.judge_classification(invoice_dict, result)
+        result["judge_verdict"] = judge.get("verdict", "UNCERTAIN")
+        result["judge_reason"] = judge.get("reason", "")
+        # If judge disagrees, escalate flag_for_review regardless of classifier confidence
+        if judge.get("verdict") == "DISAGREE":
+            result["flag_for_review"] = True
+        print(f"Judge: {judge.get('verdict')} | {judge.get('reason')}")
+    except Exception as e:
+        result["judge_verdict"] = "UNCERTAIN"
+        result["judge_reason"] = f"Judge error: {str(e)}"
+        print(f"Judge error: {e}")
+
     # Auto-log to LangSmith when we have a known human decision to compare against
     human_decision = (req.current_decision or "UNKNOWN").strip().upper()
     if human_decision in ("YES", "NO") and llm_client.langsmith_client:

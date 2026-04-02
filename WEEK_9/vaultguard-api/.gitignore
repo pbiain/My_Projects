@@ -135,3 +135,6 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Sensitive eval documents (real invoices, client data)
+evals/Documents/

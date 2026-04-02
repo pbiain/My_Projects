@@ -87,13 +87,19 @@ BILL CLIENT (YES) when the issue is caused by:
 
 ABSORB (NO) when the issue is:
 - Normal wear and tear (validator spring/component failure)
-- Communications / connectivity / modem failure
+- Communications / connectivity / modem failure (SIM, signal, firmware, network — where the cause is technical, not customer action)
 - Software or firmware issues
 - Network or phone line problems
 - User programming errors
 - No problem found on site
-- Printer jams or paper loading
+- Printer jams or paper/receipt loading only
 - Equipment resets
+
+IMPORTANT DISTINCTIONS — these look like NO but are YES:
+- Coin tube jams (Tube Vend): caused by customer mis-loading coins or foreign objects → BILL CLIENT (YES)
+- Bill acceptor jams: caused by customer inserting foreign objects (coins, debris) → BILL CLIENT (YES)
+- Modem/comms unit unplugged or powered off by customer: customer negligence → BILL CLIENT (YES)
+  Look for comments like "modem unplugged", "modem had no power", "found safe powered off" by customer action
 
 IMPORTANT: The labour charge tells you the call type:
 - $186 or $189 = standard OOS rate (Zone 1-3)
@@ -142,7 +148,9 @@ Classify this invoice."""
             )
 
             content = response.choices[0].message.content
-            result = json.loads(content)
+            # Strip markdown fences the model sometimes adds despite instructions
+            clean = content.replace("```json", "").replace("```", "").strip()
+            result = json.loads(clean)
 
             # Validate response format
             required_fields = ["decision", "confidence", "reason", "key_signal", "flag_for_review"]
@@ -160,6 +168,65 @@ Classify this invoice."""
                 "key_signal": "error",
                 "flag_for_review": True
             }
+
+    @traceable(name="judge_classification", run_type="llm")
+    async def judge_classification(self, invoice_data: dict, classifier_result: dict) -> dict:
+        """
+        Second LLM that independently reviews the classifier's decision.
+        Returns AGREE / DISAGREE / UNCERTAIN with a reason.
+        DISAGREE automatically triggers flag_for_review.
+        """
+        if not self.openai_client:
+            return {"verdict": "UNCERTAIN", "reason": "Judge not available (no OpenAI client)"}
+
+        system_prompt = """You are an independent billing auditor for VaultGuard Inc. A classifier AI has already made a billing decision on a maintenance invoice. Your job is to review that decision and check whether it follows the billing rules correctly.
+
+BILLING RULES SUMMARY:
+- BILL CLIENT (YES): abuse, vandalism, liquid spillage, physical damage, foreign objects, infestation, burglary damage, customer refused access, customer negligence (e.g. unplugged modem)
+- ABSORB (NO): normal wear and tear, technical comms/modem failure, software/firmware issues, network problems, programming errors, no fault found, printer/paper jams, equipment resets
+- Coin tube jams and bill acceptor jams caused by customer → YES
+- Modem unplugged by customer → YES
+
+Review the invoice and the classifier's decision. Respond ONLY with valid JSON, no markdown:
+{
+  "verdict": "AGREE" or "DISAGREE" or "UNCERTAIN",
+  "reason": "one sentence explaining your verdict"
+}
+
+AGREE = the decision clearly follows the rules.
+DISAGREE = the decision contradicts the rules or the evidence.
+UNCERTAIN = the evidence is too ambiguous to confirm or deny."""
+
+        user_prompt = f"""=== INVOICE ===
+OOS Tier 1:      {invoice_data.get('oos_tier1', 'Not provided')}
+OOS Tier 2:      {invoice_data.get('oos_tier2', 'Not provided')}
+Technician Note: {invoice_data.get('comment', 'No comment')}
+Labour Charge:   ${invoice_data.get('labour_charge', 0)}
+Total Amount:    ${invoice_data.get('total_amount', 0)}
+
+=== CLASSIFIER DECISION ===
+Decision:    {classifier_result.get('decision')}
+Confidence:  {classifier_result.get('confidence')}
+Reason:      {classifier_result.get('reason')}
+Key Signal:  {classifier_result.get('key_signal')}
+
+Do you AGREE, DISAGREE, or are you UNCERTAIN about this decision?"""
+
+        try:
+            response = await self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,
+                max_tokens=150
+            )
+            content = response.choices[0].message.content
+            clean = content.replace("```json", "").replace("```", "").strip()
+            return json.loads(clean)
+        except Exception as e:
+            return {"verdict": "UNCERTAIN", "reason": f"Judge failed: {str(e)}"}
 
     def _mock_classification(self, invoice_data: dict) -> dict:
         """
