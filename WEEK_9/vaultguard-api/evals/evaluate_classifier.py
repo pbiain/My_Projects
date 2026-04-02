@@ -165,6 +165,8 @@ def confidence_appropriate(run: Run, example: Example) -> dict:
 
 def classify_invoice_sync(inputs: dict) -> dict:
     """Synchronous wrapper for the async classifier — needed by LangSmith evaluate()."""
+    import sys, os
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from src.llm_client import LLMClient
 
     client = LLMClient()
