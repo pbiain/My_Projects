@@ -265,7 +265,8 @@ Classify this invoice."""
                 "ship_name, ship_addr1, ship_city, ship_state, ship_zip, call_number, "
                 "labor_charge (number), parts_amount (number), shipping_amount (number), "
                 "subtotal (number), tax_amount (number), total_amount (number), "
-                "oos_tier1, oos_tier2, comment. "
+                "oos_tier1, oos_tier2, comment, "
+                "current_decision (the 'Bill Customer' YES/NO field on the invoice, or 'UNKNOWN' if not present). "
                 "Return ONLY the JSON array, no markdown, no preamble."
             )
         })
