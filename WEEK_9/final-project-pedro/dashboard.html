@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>VaultGuard — Operations Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --gold: #c9a227;
+    --gold-dim: #a07818;
+    --money: #52b788;
+    --money-bright: #74c99a;
+    --bg: #0d0d0d;
+    --card: #161616;
+    --card2: #1c1c1c;
+    --border: #2a2a2a;
+    --text: #e8e8e8;
+    --silver: #999;
+    --red: #e74c3c;
+    --yellow: #f1c40f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #111 0%, #1a1500 100%);
+    border-bottom: 2px solid var(--gold);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 24px rgba(201,162,39,0.15);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-icon {
+    font-size: 28px;
+  }
+  .logo-text {
+    font-family: 'Segoe UI', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: 3px;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--silver);
+    letter-spacing: 2px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--money-bright);
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--money-bright);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+  .last-updated {
+    font-size: 11px;
+    color: var(--silver);
+  }
+  .refresh-btn {
+    background: var(--gold);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: opacity 0.2s;
+  }
+  .refresh-btn:hover { opacity: 0.85; }
+
+  /* ── Layout ── */
+  .main { padding: 24px 32px; max-width: 1600px; margin: 0 auto; }
+
+  /* ── Period selector ── */
+  .period-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .period-label { font-size: 12px; color: var(--silver); margin-right: 4px; }
+  .period-btn {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--silver);
+    border-radius: 6px;
+    padding: 5px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .period-btn.active, .period-btn:hover {
+    background: var(--gold);
+    color: #000;
+    border-color: var(--gold);
+    font-weight: 700;
+  }
+  .team-filter {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+  }
+  .team-chip {
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--silver);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .team-chip.active {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* ── KPI Cards ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi:hover { border-color: var(--gold-dim); }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent, var(--gold));
+  }
+  .kpi-label { font-size: 11px; color: var(--silver); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  .kpi-value { font-size: 36px; font-weight: 800; color: var(--text); line-height: 1; }
+  .kpi-sub { font-size: 11px; color: var(--silver); margin-top: 6px; }
+  .kpi-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .kpi-delta.up { background: rgba(82,183,136,0.15); color: var(--money-bright); }
+  .kpi-delta.down { background: rgba(231,76,60,0.15); color: var(--red); }
+
+  /* ── Charts grid ── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .charts-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+  .chart-card:hover { border-color: var(--border); }
+  .chart-card h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+  .chart-card .chart-sub {
+    font-size: 11px;
+    color: var(--silver);
+    margin-bottom: 16px;
+  }
+  .chart-wrap { position: relative; }
+
+  /* ── Table ── */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .table-card h3 {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .table-card .chart-sub {
+    font-size: 11px;
+    color: var(--silver);
+    margin-bottom: 16px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    text-align: left;
+    font-size: 10px;
+    color: var(--silver);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0 12px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  tbody td {
+    padding: 10px 12px;
+    vertical-align: middle;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .badge-yes { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .badge-no { background: rgba(82,183,136,0.2); color: var(--money-bright); }
+  .badge-flag { background: rgba(241,196,15,0.2); color: var(--yellow); }
+  .badge-agree { background: rgba(82,183,136,0.15); color: var(--money-bright); }
+  .badge-disagree { background: rgba(231,76,60,0.15); color: var(--red); }
+  .badge-uncertain { background: rgba(201,162,39,0.15); color: var(--gold); }
+  .badge-high { background: rgba(82,183,136,0.15); color: var(--money-bright); }
+  .badge-medium { background: rgba(241,196,15,0.15); color: var(--yellow); }
+  .badge-low { background: rgba(231,76,60,0.15); color: var(--red); }
+
+  /* ── Flagged queue ── */
+  .flag-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .flag-item:last-child { border-bottom: none; }
+  .flag-icon { font-size: 18px; flex-shrink: 0; }
+  .flag-info { flex: 1; }
+  .flag-id { font-size: 13px; font-weight: 600; }
+  .flag-reason { font-size: 11px; color: var(--silver); margin-top: 2px; }
+  .flag-meta { font-size: 11px; color: var(--silver); text-align: right; flex-shrink: 0; }
+  .flag-amount { font-size: 14px; font-weight: 700; color: var(--gold); }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 20px 32px;
+    font-size: 11px;
+    color: var(--silver);
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+
+  @media (max-width: 900px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .charts-grid-3 { grid-template-columns: 1fr; }
+    .main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ Header ═══ -->
+<header>
+  <div class="logo">
+    <span class="logo-icon">🏦</span>
+    <div>
+      <div class="logo-text">VaultGuard</div>
+      <div class="logo-sub">AI Operations Dashboard</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div class="last-updated" id="lastUpdated">Updated just now</div>
+    <button class="refresh-btn" onclick="refreshData()">↻ REFRESH</button>
+  </div>
+</header>
+
+<!-- ═══ Main ═══ -->
+<div class="main">
+
+  <!-- Period selector -->
+  <div class="period-row">
+    <span class="period-label">Period:</span>
+    <button class="period-btn active" onclick="setPeriod(this,'7d')">Last 7 days</button>
+    <button class="period-btn" onclick="setPeriod(this,'30d')">Last 30 days</button>
+    <button class="period-btn" onclick="setPeriod(this,'90d')">Last 3 months</button>
+    <button class="period-btn" onclick="setPeriod(this,'ytd')">Year to date</button>
+    <div class="team-filter">
+      <div class="team-chip active" onclick="toggleChip(this)">Billing</div>
+      <div class="team-chip active" onclick="toggleChip(this)">Ops</div>
+      <div class="team-chip active" onclick="toggleChip(this)">Finance</div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi" style="--accent: var(--gold);">
+      <div class="kpi-label">Invoices Processed</div>
+      <div class="kpi-value" id="kpi-processed">667</div>
+      <div class="kpi-delta up" id="kpi-processed-delta">↑ 12% vs last month</div>
+      <div class="kpi-sub">This month to date</div>
+    </div>
+    <div class="kpi" style="--accent: var(--money-bright);">
+      <div class="kpi-label">AI Accuracy Rate</div>
+      <div class="kpi-value" id="kpi-accuracy">92<span style="font-size:20px;">%</span></div>
+      <div class="kpi-delta up">↑ 4pp vs last eval</div>
+      <div class="kpi-sub">vs human biller ground truth</div>
+    </div>
+    <div class="kpi" style="--accent: var(--money-bright);">
+      <div class="kpi-label">Cost Recovered (YES)</div>
+      <div class="kpi-value" id="kpi-recovered" style="font-size:28px;">$41,750</div>
+      <div class="kpi-delta up">↑ $3,200 vs last month</div>
+      <div class="kpi-sub">Billed to clients this month</div>
+    </div>
+    <div class="kpi" style="--accent: #52b788;">
+      <div class="kpi-label">Cost Absorbed (NO)</div>
+      <div class="kpi-value" id="kpi-absorbed" style="font-size:28px;">$24,800</div>
+      <div class="kpi-delta down">↑ $1,100 vs last month</div>
+      <div class="kpi-sub">VaultGuard absorbs</div>
+    </div>
+    <div class="kpi" style="--accent: var(--yellow);">
+      <div class="kpi-label">Flagged for Review</div>
+      <div class="kpi-value" id="kpi-flagged" style="color: var(--yellow);">23</div>
+      <div class="kpi-delta down">↑ 5 since yesterday</div>
+      <div class="kpi-sub">Pending human decision</div>
+    </div>
+    <div class="kpi" style="--accent: var(--silver);">
+      <div class="kpi-label">Judge Disagreements</div>
+      <div class="kpi-value" id="kpi-disagree" style="color: var(--red);">8</div>
+      <div class="kpi-delta up">↓ 3 vs last month</div>
+      <div class="kpi-sub">Classifier ≠ Judge verdict</div>
+    </div>
+    <div class="kpi" style="--accent: var(--gold-dim);">
+      <div class="kpi-label">Cost per Invoice</div>
+      <div class="kpi-value" style="font-size:28px;">$0.004</div>
+      <div class="kpi-delta up">Stable</div>
+      <div class="kpi-sub">GPT-4o classifier + judge</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Volume over time + Decision split -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>Invoice Volume &amp; AI Decision Trend</h3>
+      <div class="chart-sub">Daily invoices processed — YES (bill client) vs NO (absorb)</div>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="volumeChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Decision Split</h3>
+      <div class="chart-sub">Current month distribution</div>
+      <div class="chart-wrap" style="height:220px;display:flex;align-items:center;justify-content:center;">
+        <canvas id="splitChart" style="max-width:220px;max-height:220px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Accuracy + Confidence + Judge verdicts -->
+  <div class="charts-grid-3">
+    <div class="chart-card">
+      <h3>AI Accuracy Rate — Weekly</h3>
+      <div class="chart-sub">% correct vs human biller ground truth</div>
+      <div class="chart-wrap" style="height:180px;">
+        <canvas id="accuracyChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Confidence Distribution</h3>
+      <div class="chart-sub">HIGH / MEDIUM / LOW across all invoices</div>
+      <div class="chart-wrap" style="height:180px;display:flex;align-items:center;justify-content:center;">
+        <canvas id="confidenceChart" style="max-width:200px;max-height:180px;"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Judge Verdicts</h3>
+      <div class="chart-sub">Second-LLM audit outcomes</div>
+      <div class="chart-wrap" style="height:180px;display:flex;align-items:center;justify-content:center;">
+        <canvas id="judgeChart" style="max-width:200px;max-height:180px;"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Cost recovered vs absorbed over time -->
+  <div class="chart-card" style="margin-bottom:16px;">
+    <h3>Cost Recovered vs Absorbed — Monthly</h3>
+    <div class="chart-sub">Billed to clients (YES) vs absorbed by VaultGuard (NO) — cumulative monthly totals ($)</div>
+    <div class="chart-wrap" style="height:200px;">
+      <canvas id="costChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Row 4: Flagged queue + Recent invoice log -->
+  <div class="charts-grid">
+
+    <!-- Flagged for review queue -->
+    <div class="chart-card">
+      <h3>⚠️ Flagged Cases — Pending Human Review</h3>
+      <div class="chart-sub">Classifier or Judge flagged these — sorted by invoice amount</div>
+      <div id="flaggedList">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- OOS Category breakdown -->
+    <div class="chart-card">
+      <h3>OOS Categories — Top Reasons</h3>
+      <div class="chart-sub">Most frequent OOS Tier 1 categories this month</div>
+      <div class="chart-wrap" style="height:260px;">
+        <canvas id="oosChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Row 5: Recent invoice log -->
+  <div class="table-card">
+    <h3>Recent Invoice Log</h3>
+    <div class="chart-sub">Last 10 invoices processed by the AI pipeline</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Serial</th>
+          <th>OOS Tier</th>
+          <th>Total</th>
+          <th>Decision</th>
+          <th>Confidence</th>
+          <th>Judge</th>
+          <th>Flagged</th>
+          <th>Processed</th>
+        </tr>
+      </thead>
+      <tbody id="invoiceTable">
+        <!-- populated by JS -->
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /main -->
+
+<footer>
+  VaultGuard AI Operations Dashboard &nbsp;·&nbsp; Powered by GPT-4o + LangSmith &nbsp;·&nbsp; Data refreshes every 5 minutes
+  &nbsp;·&nbsp; For billing, ops &amp; finance teams
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════
+// Simulated data — replace with real API calls
+// to /classify endpoint + LangSmith dataset reads
+// ══════════════════════════════════════════════════
+
+const MONTHS = ['Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+const DAYS   = Array.from({length:30}, (_,i) => `Mar ${i+1}`);
+
+// Volume data (daily YES/NO)
+const dailyYes = [14,18,12,21,16,19,23,11,17,20,15,18,22,13,19,24,16,21,18,25,14,20,17,23,19,16,22,18,21,24];
+const dailyNo  = [19,22,17,25,20,23,18,15,21,24,19,22,26,17,23,28,20,25,22,19,18,24,21,27,23,20,26,22,25,28];
+
+// Monthly cost data
+const monthlyRecovered = [32400,35100,28900,41200,38600,43100,39800,41750];
+const monthlyAbsorbed  = [19800,22400,17600,25300,23100,26800,22900,24800];
+
+// OOS categories
+const oosLabels = ['Tube Vend / Coin Jam','Comms / Modem','Bill Acceptor','Liquid Damage','Physical Damage','No Fault Found','Printer / Paper','User Error'];
+const oosCounts = [187,143,98,72,61,54,38,14];
+
+// Accuracy weekly
+const accuracyWeeks = ['W1','W2','W3','W4','W5','W6','W7','W8'];
+const accuracyVals  = [88,85,90,87,91,89,93,92];
+
+// Flagged invoices (sample)
+const flagged = [
+  { id:'INV-24-8871', serial:'SN-3310-A', reason:'Judge DISAGREE — comment contradicts OOS tier', amount:'$630', age:'2h' },
+  { id:'INV-24-8854', serial:'SN-2201-C', reason:'LOW confidence — technician note empty', amount:'$186', age:'5h' },
+  { id:'INV-24-8841', serial:'SN-4480-B', reason:'Judge UNCERTAIN — ambiguous "modem issue"', amount:'$189', age:'8h' },
+  { id:'INV-24-8829', serial:'SN-1100-D', reason:'HIGH confidence WRONG on eval set', amount:'$621', age:'1d' },
+  { id:'INV-24-8803', serial:'SN-5521-A', reason:'Judge DISAGREE — liquid vs wear & tear', amount:'$186', age:'1d' },
+  { id:'INV-24-8798', serial:'SN-3399-C', reason:'Missing OOS Tier 1 category', amount:'$189', age:'2d' },
+];
+
+// Recent invoices
+const recentInvoices = [
+  { id:'INV-24-8900', serial:'SN-4411-B', oos:'Tube Vend',     total:'$189', decision:'YES', conf:'HIGH',   judge:'AGREE',     flag:false, time:'2 min ago' },
+  { id:'INV-24-8899', serial:'SN-2209-A', oos:'Comms',         total:'$186', decision:'NO',  conf:'HIGH',   judge:'AGREE',     flag:false, time:'8 min ago' },
+  { id:'INV-24-8898', serial:'SN-5500-C', oos:'Bill Acceptor', total:'$630', decision:'YES', conf:'MEDIUM', judge:'UNCERTAIN', flag:true,  time:'15 min ago' },
+  { id:'INV-24-8897', serial:'SN-1102-D', oos:'Liquid Damage', total:'$186', decision:'YES', conf:'HIGH',   judge:'AGREE',     flag:false, time:'22 min ago' },
+  { id:'INV-24-8896', serial:'SN-3310-A', oos:'No Fault Found',total:'$186', decision:'NO',  conf:'HIGH',   judge:'AGREE',     flag:false, time:'31 min ago' },
+  { id:'INV-24-8895', serial:'SN-4480-B', oos:'Comms',         total:'$186', decision:'NO',  conf:'LOW',    judge:'UNCERTAIN', flag:true,  time:'45 min ago' },
+  { id:'INV-24-8894', serial:'SN-2201-C', oos:'Physical',      total:'$621', decision:'YES', conf:'HIGH',   judge:'AGREE',     flag:false, time:'52 min ago' },
+  { id:'INV-24-8893', serial:'SN-1100-D', oos:'User Error',    total:'$186', decision:'NO',  conf:'MEDIUM', judge:'AGREE',     flag:false, time:'1h ago' },
+  { id:'INV-24-8892', serial:'SN-3399-C', oos:'Printer',       total:'$186', decision:'NO',  conf:'HIGH',   judge:'AGREE',     flag:false, time:'1h 10m ago' },
+  { id:'INV-24-8891', serial:'SN-5521-A', oos:'Comms',         total:'$186', decision:'NO',  conf:'MEDIUM', judge:'DISAGREE',  flag:true,  time:'1h 25m ago' },
+];
+
+// ── Chart defaults ──────────────────────────────
+Chart.defaults.color = '#888';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size   = 11;
+
+function goldGradient(ctx, chartArea) {
+  const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  g.addColorStop(0, 'rgba(201,162,39,0.35)');
+  g.addColorStop(1, 'rgba(201,162,39,0)');
+  return g;
+}
+function greenGradient(ctx, chartArea) {
+  const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+  g.addColorStop(0, 'rgba(82,183,136,0.35)');
+  g.addColorStop(1, 'rgba(82,183,136,0)');
+  return g;
+}
+
+// ── Volume chart ────────────────────────────────
+const volumeCtx = document.getElementById('volumeChart').getContext('2d');
+let volumeYesBg, volumeNoBg;
+const volumeChart = new Chart(volumeCtx, {
+  type: 'bar',
+  data: {
+    labels: DAYS,
+    datasets: [
+      {
+        label: 'Bill Client (YES)',
+        data: dailyYes,
+        backgroundColor: 'rgba(231,76,60,0.7)',
+        borderRadius: 3,
+        order: 2,
+      },
+      {
+        label: 'Absorb (NO)',
+        data: dailyNo,
+        backgroundColor: 'rgba(82,183,136,0.6)',
+        borderRadius: 3,
+        order: 2,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 10, padding: 16 } },
+      tooltip: { mode: 'index', intersect: false }
+    },
+    scales: {
+      x: { stacked: true, ticks: { maxTicksLimit: 10 } },
+      y: { stacked: true, beginAtZero: true }
+    }
+  }
+});
+
+// ── Split donut ─────────────────────────────────
+const splitCtx = document.getElementById('splitChart').getContext('2d');
+const splitChart = new Chart(splitCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Bill Client (YES)', 'Absorb (NO)'],
+    datasets: [{
+      data: [
+        dailyYes.reduce((a,b)=>a+b,0),
+        dailyNo.reduce((a,b)=>a+b,0)
+      ],
+      backgroundColor: ['rgba(231,76,60,0.8)', 'rgba(82,183,136,0.8)'],
+      borderColor: ['#e74c3c', '#52b788'],
+      borderWidth: 2,
+      hoverOffset: 8,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 10, padding: 14 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+            const pct = ((ctx.parsed / total)*100).toFixed(1);
+            return ` ${ctx.label}: ${ctx.parsed} (${pct}%)`;
+          }
+        }
+      }
+    }
+  }
+});
+
+// ── Accuracy line ───────────────────────────────
+const accCtx = document.getElementById('accuracyChart').getContext('2d');
+const accChart = new Chart(accCtx, {
+  type: 'line',
+  data: {
+    labels: accuracyWeeks,
+    datasets: [{
+      label: 'Accuracy %',
+      data: accuracyVals,
+      borderColor: '#c9a227',
+      backgroundColor: function(ctx) {
+        const chart = ctx.chart;
+        const {chartArea} = chart;
+        if (!chartArea) return 'transparent';
+        return goldGradient(chart.ctx, chartArea);
+      },
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: '#c9a227',
+      pointRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}%` } }
+    },
+    scales: {
+      y: { min: 75, max: 100, ticks: { callback: v => v+'%' } }
+    }
+  }
+});
+
+// ── Confidence pie ──────────────────────────────
+const confCtx = document.getElementById('confidenceChart').getContext('2d');
+const confChart = new Chart(confCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['HIGH', 'MEDIUM', 'LOW'],
+    datasets: [{
+      data: [489, 134, 44],
+      backgroundColor: ['rgba(82,183,136,0.8)','rgba(241,196,15,0.7)','rgba(231,76,60,0.8)'],
+      borderColor:     ['#52b788','#f1c40f','#e74c3c'],
+      borderWidth: 2,
+      hoverOffset: 8,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '60%',
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10 } }
+    }
+  }
+});
+
+// ── Judge pie ───────────────────────────────────
+const judgeCtx = document.getElementById('judgeChart').getContext('2d');
+const judgeChart = new Chart(judgeCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['AGREE', 'UNCERTAIN', 'DISAGREE'],
+    datasets: [{
+      data: [601, 54, 12],
+      backgroundColor: ['rgba(82,183,136,0.8)','rgba(201,162,39,0.7)','rgba(231,76,60,0.8)'],
+      borderColor:     ['#52b788','#c9a227','#e74c3c'],
+      borderWidth: 2,
+      hoverOffset: 8,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '60%',
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10 } }
+    }
+  }
+});
+
+// ── Cost bar ────────────────────────────────────
+const costCtx = document.getElementById('costChart').getContext('2d');
+const costChart = new Chart(costCtx, {
+  type: 'bar',
+  data: {
+    labels: MONTHS,
+    datasets: [
+      {
+        label: 'Recovered from clients ($)',
+        data: monthlyRecovered,
+        backgroundColor: 'rgba(231,76,60,0.7)',
+        borderRadius: 4,
+      },
+      {
+        label: 'Absorbed by VaultGuard ($)',
+        data: monthlyAbsorbed,
+        backgroundColor: 'rgba(82,183,136,0.6)',
+        borderRadius: 4,
+      },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top', labels: { boxWidth: 10, padding: 16 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}`
+        }
+      }
+    },
+    scales: {
+      y: { ticks: { callback: v => '$'+v.toLocaleString() } }
+    }
+  }
+});
+
+// ── OOS horizontal bar ──────────────────────────
+const oosCtx = document.getElementById('oosChart').getContext('2d');
+const oosChart = new Chart(oosCtx, {
+  type: 'bar',
+  data: {
+    labels: oosLabels,
+    datasets: [{
+      label: 'Invoices',
+      data: oosCounts,
+      backgroundColor: [
+        'rgba(231,76,60,0.7)',
+        'rgba(201,162,39,0.7)',
+        'rgba(231,76,60,0.6)',
+        'rgba(231,76,60,0.5)',
+        'rgba(231,76,60,0.4)',
+        'rgba(82,183,136,0.6)',
+        'rgba(82,183,136,0.5)',
+        'rgba(82,183,136,0.4)',
+      ],
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true } }
+  }
+});
+
+// ── Flagged list ────────────────────────────────
+function renderFlagged() {
+  const el = document.getElementById('flaggedList');
+  el.innerHTML = flagged.map(f => `
+    <div class="flag-item">
+      <div class="flag-icon">⚠️</div>
+      <div class="flag-info">
+        <div class="flag-id">${f.id} &nbsp;<span style="color:var(--silver);font-size:11px;">${f.serial}</span></div>
+        <div class="flag-reason">${f.reason}</div>
+      </div>
+      <div class="flag-meta">
+        <div class="flag-amount">${f.amount}</div>
+        <div>${f.age} ago</div>
+      </div>
+    </div>
+  `).join('');
+}
+renderFlagged();
+
+// ── Invoice table ───────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('invoiceTable');
+  tbody.innerHTML = recentInvoices.map(inv => `
+    <tr>
+      <td style="font-weight:600;">${inv.id}</td>
+      <td style="color:var(--silver);">${inv.serial}</td>
+      <td>${inv.oos}</td>
+      <td style="font-weight:600;">${inv.total}</td>
+      <td><span class="badge badge-${inv.decision.toLowerCase()}">${inv.decision}</span></td>
+      <td><span class="badge badge-${inv.conf.toLowerCase()}">${inv.conf}</span></td>
+      <td><span class="badge badge-${inv.judge.toLowerCase()}">${inv.judge}</span></td>
+      <td>${inv.flag ? '<span class="badge badge-flag">⚠ FLAG</span>' : '<span style="color:var(--silver);">—</span>'}</td>
+      <td style="color:var(--silver);">${inv.time}</td>
+    </tr>
+  `).join('');
+}
+renderTable();
+
+// ── Period selector ─────────────────────────────
+function setPeriod(btn, period) {
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // In production: re-fetch data for the selected window
+  // For now, just update the "last updated" label as a visual cue
+  updateTimestamp();
+}
+
+function toggleChip(el) {
+  el.classList.toggle('active');
+}
+
+// ── Refresh ─────────────────────────────────────
+function updateTimestamp() {
+  const now = new Date();
+  document.getElementById('lastUpdated').textContent =
+    'Updated ' + now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+updateTimestamp();
+
+function refreshData() {
+  // In production: call /classify stats endpoint + LangSmith API
+  // For now simulate a subtle KPI tweak
+  const bump = Math.floor(Math.random() * 3);
+  document.getElementById('kpi-processed').textContent = 667 + bump;
+  updateTimestamp();
+}
+
+// Auto-refresh every 5 minutes
+setInterval(refreshData, 5 * 60 * 1000);
+</script>
+</body>
+</html>
